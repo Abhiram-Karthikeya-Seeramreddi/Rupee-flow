@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,6 +85,7 @@ import com.rupeeflow.core.Ledger
 import com.rupeeflow.core.Money
 import com.rupeeflow.core.Periods
 import java.time.LocalDate
+import kotlinx.coroutines.launch
 
 enum class PlanTab(val label: String) { BUDGETS("Budgets"), GOALS("Goals"), CHALLENGES("Challenges") }
 
@@ -127,14 +131,20 @@ fun PlanScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues,
                             }
                         }
                         val overCount = cat.count { it.status.state == BudgetState.OVER }
-                        if (overCount > 0) Text("$overCount budget${if (overCount == 1) " is" else "s are"} over. That's the category limit — your bank balance is shown separately on Home.",
-                            style = MaterialTheme.typography.labelMedium, color = Rf.colors.negative, modifier = Modifier.padding(top = 6.dp))
+                        if (overCount > 0) Text("$overCount over budget", style = MaterialTheme.typography.labelMedium,
+                            color = Rf.colors.negative, modifier = Modifier.padding(top = 6.dp))
                     }
                 }
+                // Budgets with spending get full cards; untouched ones collapse into one tidy list.
+                val active = cat.filter { it.status.spent > 0 }
+                val unused = cat.filter { it.status.spent == 0L }
                 items(overall, key = { it.budget.id }) { b -> BudgetCard(b, snap) { editBudget = b.budget } }
-                items(cat, key = { it.budget.id }) { b -> BudgetCard(b, snap) { editBudget = b.budget } }
+                items(active, key = { it.budget.id }) { b -> BudgetCard(b, snap) { editBudget = b.budget } }
+                if (unused.isNotEmpty()) item(key = "unused") {
+                    UnusedBudgets(unused) { editBudget = it.budget }
+                }
                 if (snap.budgets.isEmpty()) item {
-                    EmptyState("🎯", "No budgets yet", "Set a limit per category for each salary cycle. Alerts come at 50, 75, 90 and 100%.")
+                    EmptyState("🎯", "No budgets yet", "Set a limit per category. You'll get alerts as you spend.")
                 }
                 // Suggestions from real spending without a budget
                 val budgeted = cat.mapNotNull { it.budget.categoryId }.toSet()
@@ -161,7 +171,7 @@ fun PlanScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues,
 
             PlanTab.GOALS -> {
                 if (snap.goals.isEmpty()) item {
-                    EmptyState("🏝️", "Save for something", "Emergency fund, a vacation, a new phone or gaming PC. Progress only counts real money you move — never just plans.")
+                    EmptyState("🏝️", "Save for something", "Emergency fund, trip, new phone…")
                 }
                 items(snap.goals, key = { it.goal.id }) { g -> GoalCard(g, snap, onEdit = { editGoal = g.goal }, onMove = { w -> moveGoal = g to w }) }
                 item {
@@ -170,7 +180,7 @@ fun PlanScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues,
                 item {
                     RfCard {
                         Text("Savings plan per salary cycle", style = MaterialTheme.typography.titleSmall)
-                        Text("Set aside this much every cycle. It's subtracted from safe-to-spend until you actually move it to a savings account.",
+                        Text("Kept aside from safe-to-spend each cycle.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         var plan by remember(snap.settings.plannedSavingsPerCycle) { mutableStateOf(if (snap.settings.plannedSavingsPerCycle > 0) Money.toInput(snap.settings.plannedSavingsPerCycle) else "") }
                         Spacer(Modifier.height(8.dp))
@@ -190,7 +200,7 @@ fun PlanScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues,
 
             PlanTab.CHALLENGES -> {
                 item {
-                    Text("Small wins build the habit. Challenges are optional and only use your real entries.",
+                    Text("Small wins build the habit.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 items(snap.challenges, key = { it.challenge.id }) { c ->
@@ -231,6 +241,38 @@ fun PlanScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues,
 }
 
 @Composable
+private fun UnusedBudgets(list: List<BudgetView>, onEdit: (BudgetView) -> Unit) {
+    val fmt = LocalMoney.current
+    var open by remember { mutableStateOf(false) }
+    RfCard(padding = 12) {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { open = !open }.padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("No spending yet (${list.size})", style = MaterialTheme.typography.titleSmall)
+                Text(list.joinToString("  ") { it.emoji }, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            }
+            Text(fmt.f(list.sumOf { it.status.limit }), style = MaterialTheme.typography.labelLarge, color = Rf.colors.subtle)
+            Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, if (open) "Hide" else "Show")
+        }
+        AnimatedVisibility(open) {
+            Column {
+                list.forEach { b ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onEdit(b) }.padding(horizontal = 4.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("${b.emoji}  ${b.name}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Text(fmt.f(b.status.limit), style = MaterialTheme.typography.bodyMedium, color = Rf.colors.subtle)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun BudgetCard(b: BudgetView, snap: Snapshot, onClick: () -> Unit) {
     val fmt = LocalMoney.current
     val s = b.status
@@ -245,7 +287,7 @@ private fun BudgetCard(b: BudgetView, snap: Snapshot, onClick: () -> Unit) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(b.name, style = MaterialTheme.typography.titleSmall)
-                Text("${b.budget.budgetPeriod().label} · ${b.range.label()}", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                Text("${b.budget.budgetPeriod().label} · ${s.daysLeft}d left", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
             }
             Pill(s.state.label, color)
         }
@@ -256,20 +298,16 @@ private fun BudgetCard(b: BudgetView, snap: Snapshot, onClick: () -> Unit) {
             Text("${fmt.f(s.spent)} of ${fmt.f(s.limit)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f))
             Text("${s.percentUsed}%", style = MaterialTheme.typography.bodyMedium, color = color)
         }
-        if (s.remaining >= 0) {
-            Text("${fmt.f(s.remaining)} left · ${s.daysLeft} day${if (s.daysLeft == 1) "" else "s"} to go" +
-                if (s.daysLeft > 1) " · ${fmt.f(s.perDayLeft)}/day" else "",
-                style = MaterialTheme.typography.labelMedium, color = Rf.colors.subtle)
-        } else {
-            Text("Over by ${fmt.f(-s.remaining)} in this category (not your bank balance)", style = MaterialTheme.typography.labelMedium, color = Rf.colors.negative)
-        }
-        if (s.state == BudgetState.FAST) Text("At this pace: about ${fmt.f(s.projectedSpend)} by the end (estimate)", style = MaterialTheme.typography.labelSmall, color = Rf.colors.warning)
-        b.previousSpent?.let { p ->
-            val diff = s.spent - p
-            Text("Previous period: ${fmt.f(p)}" + if (s.daysLeft == 0 && p > 0) " (${if (diff >= 0) "+" else "−"}${fmt.f(kotlin.math.abs(diff))})" else "",
-                style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
-        }
-        if (b.budget.rollover) Text("Rollover on: last period's unused/overspent amount is included", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+        Text(
+            when {
+                s.remaining < 0 -> "Over by ${fmt.f(-s.remaining)}"
+                s.daysLeft > 1 -> "${fmt.f(s.remaining)} left · ${fmt.f(s.perDayLeft)}/day"
+                else -> "${fmt.f(s.remaining)} left"
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = if (s.remaining < 0) Rf.colors.negative else Rf.colors.subtle,
+        )
+        if (s.state == BudgetState.FAST) Text("At this pace ≈ ${fmt.f(s.projectedSpend)}", style = MaterialTheme.typography.labelSmall, color = Rf.colors.warning)
     }
 }
 
@@ -317,7 +355,7 @@ private fun BudgetEditor(vm: MainViewModel, snap: Snapshot, b: BudgetEntity, isN
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Roll over", style = MaterialTheme.typography.bodyLarge)
-                        Text("Carry last period's unused (or overspent) amount into this one", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                        Text("Carry over what's left", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                     }
                     Switch(rollover, { rollover = it })
                 }
@@ -360,9 +398,11 @@ private fun GoalCard(g: GoalView, snap: Snapshot, onEdit: () -> Unit, onMove: (B
                 Text(g.goal.name, style = MaterialTheme.typography.titleMedium)
                 Text("${fmt.f(p.saved)} of ${fmt.f(p.target)} · ${p.percent}%", style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    if (p.done) "Goal reached 🎉"
-                    else (g.goal.targetEpochDay?.let { "By ${fullDate(LocalDate.ofEpochDay(it))} · " } ?: "") +
-                        "${fmt.f(p.perCycle)} per salary cycle" + if (p.cyclesLeft > 1) " for ${p.cyclesLeft} cycles" else "",
+                    when {
+                        p.done -> "Goal reached 🎉"
+                        g.goal.targetEpochDay == null -> "${fmt.f(p.remaining)} to go"
+                        else -> "${fmt.f(p.perCycle)}/cycle · by ${fullDate(LocalDate.ofEpochDay(g.goal.targetEpochDay))}"
+                    },
                     style = MaterialTheme.typography.labelMedium, color = Rf.colors.subtle,
                 )
                 g.accountName?.let { Text("Kept in $it", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle) }
@@ -396,7 +436,8 @@ private fun GoalEditor(vm: MainViewModel, snap: Snapshot, g: GoalEntity, isNew: 
     var target by remember { mutableStateOf(if (g.target > 0) Money.toInput(g.target) else "") }
     var hasDate by remember { mutableStateOf(g.targetEpochDay != null) }
     var date by remember { mutableStateOf(g.targetEpochDay?.let { LocalDate.ofEpochDay(it) } ?: snap.today.plusMonths(6)) }
-    var accountId by remember { mutableStateOf(g.accountId ?: snap.activeAccounts.firstOrNull { it.accountType() == AccountType.SAVINGS }?.id) }
+    val scope = rememberCoroutineScope()
+    var accountId by remember { mutableStateOf(g.accountId ?: savingsAccounts(snap).firstOrNull()?.id) }
     var initial by remember { mutableStateOf(if (g.initialSaved > 0) Money.toInput(g.initialSaved) else "") }
     var confirmDelete by remember { mutableStateOf(false) }
     val presets = listOf("🛟" to "Emergency fund", "🏝️" to "Vacation", "📱" to "New phone", "🖥️" to "Gaming PC", "📈" to "Investments", "🏦" to "Long-term savings")
@@ -408,19 +449,21 @@ private fun GoalEditor(vm: MainViewModel, snap: Snapshot, g: GoalEntity, isNew: 
                 if (isNew) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     presets.forEach { (e, n) -> FilterChip(name == n, { name = n; emoji = e }, label = { Text("$e $n") }) }
                 }
-                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(emoji, { if (it.length <= 4) emoji = it }, label = { Text("Emoji") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 AmountField(target, { target = it }, "Target amount")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Target date", modifier = Modifier.weight(1f)); Switch(hasDate, { hasDate = it })
                 }
                 if (hasDate) DatePickerButton("By", date, { date = it }, Modifier.fillMaxWidth())
-                val keepers = snap.activeAccounts.filter { it.accountType() != AccountType.CREDIT_CARD }
-                Selector("Money kept in", listOf<String?>(null) + keepers.map { it.id }, accountId,
-                    display = { id -> id?.let { snap.account(it)?.let { a -> "${a.emoji} ${a.name}" } } ?: "Not set" }, onSelect = { accountId = it })
-                Text("Tip: add a separate Savings account in Settings → Accounts so this money isn't counted as spendable.",
-                    style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
-                AmountField(initial, { initial = it }, "Already saved before using the app (optional)")
+                val keepers = savingsAccounts(snap)
+                if (keepers.isEmpty()) {
+                    FilledTonalButton(onClick = { scope.launch { accountId = vm.repo.ensureSavingsAccount() } }) { Text("+ Create Savings account") }
+                } else {
+                    Selector("Kept in", keepers.map { it.id }, accountId,
+                        display = { id -> snap.account(id)?.let { a -> "${a.emoji} ${a.name}" } ?: "" }, onSelect = { accountId = it })
+                }
+                AmountField(initial, { initial = it }, "Already saved (optional)")
                 if (!isNew) TextButton(onClick = { confirmDelete = true }) { Text("Delete goal", color = MaterialTheme.colorScheme.error) }
             }
         },
@@ -437,28 +480,54 @@ private fun GoalEditor(vm: MainViewModel, snap: Snapshot, g: GoalEntity, isNew: 
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
-    if (confirmDelete) ConfirmDialog("Delete goal?", "Transfers you made stay in your history; they just won't be tagged to this goal.", "Delete",
+    if (confirmDelete) ConfirmDialog("Delete goal?", "Your transfers stay in history.", "Delete",
         onConfirm = { vm.write("Goal deleted") { vm.repo.deleteGoal(g.id) }; confirmDelete = false; onDismiss() }, onDismiss = { confirmDelete = false }, destructive = true)
 }
 
+/** Accounts that hold set-aside money (savings / investments / anything marked not spendable). */
+private fun savingsAccounts(snap: Snapshot) = snap.activeAccounts.filter {
+    it.accountType() == AccountType.SAVINGS || it.accountType() == AccountType.INVESTMENT ||
+        (!it.includeInSpendable && it.accountType() != AccountType.CREDIT_CARD)
+}
+
+private fun accountLabel(snap: Snapshot, id: String?, fmt: com.rupeeflow.app.ui.components.MoneyFmt): String =
+    snap.account(id)?.let { "${it.emoji} ${it.name} · ${fmt.f(snap.balances[it.id] ?: it.openingBalance)}" } ?: ""
+
 @Composable
 private fun MoveGoalMoneyDialog(vm: MainViewModel, snap: Snapshot, g: GoalView, withdraw: Boolean, onDismiss: () -> Unit) {
-    val spendable = snap.activeAccounts.filter { it.accountType() != AccountType.CREDIT_CARD && it.id != g.goal.accountId }
-    var amount by remember { mutableStateOf(if (!withdraw && g.progress.perCycle > 0) Money.toInput(g.progress.perCycle) else "") }
-    var other by remember { mutableStateOf(spendable.firstOrNull { it.id == snap.settings.defaultAccountId }?.id ?: spendable.firstOrNull()?.id) }
-    var goalAcc by remember { mutableStateOf(g.goal.accountId) }
+    val fmt = LocalMoney.current
+    val scope = rememberCoroutineScope()
+    val savings = savingsAccounts(snap)
+    var goalAcc by remember { mutableStateOf(g.goal.accountId ?: savings.firstOrNull()?.id) }
+    // Everyday accounts the money comes from (or goes back to). Never the goal's own account or a credit card.
+    val everyday = snap.activeAccounts.filter { it.accountType() != AccountType.CREDIT_CARD && it.id != goalAcc && it !in savings }
+    var amount by remember { mutableStateOf(if (!withdraw && g.goal.targetEpochDay != null && g.progress.perCycle > 0) Money.toInput(g.progress.perCycle) else "") }
+    var other by remember { mutableStateOf(everyday.firstOrNull { it.id == snap.settings.defaultAccountId }?.id ?: everyday.firstOrNull()?.id) }
+    var creating by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (withdraw) "Withdraw from ${g.goal.name}" else "Add to ${g.goal.name}") },
+        title = { Text(if (withdraw) "Take money out" else "Add money") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 AmountField(amount, { amount = it }, "Amount")
-                Selector(if (withdraw) "Back to" else "From", spendable.map { it.id }, other,
-                    display = { id -> snap.account(id)?.let { "${it.emoji} ${it.name}" } ?: "" }, onSelect = { other = it })
-                if (g.goal.accountId == null) Selector(if (withdraw) "From (savings account)" else "Into (savings account)",
-                    snap.activeAccounts.filter { it.id != other && it.accountType() != AccountType.CREDIT_CARD }.map { it.id }, goalAcc,
-                    display = { id -> snap.account(id)?.let { "${it.emoji} ${it.name}" } ?: "" }, onSelect = { goalAcc = it })
-                Text("This records a real transfer between your accounts. It isn't counted as spending.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                val savingsPicker: @Composable () -> Unit = {
+                    if (savings.isEmpty()) {
+                        Text("Keep goal money in a separate Savings account.", style = MaterialTheme.typography.bodySmall)
+                        FilledTonalButton(enabled = !creating, onClick = {
+                            creating = true
+                            scope.launch { goalAcc = vm.repo.ensureSavingsAccount(); creating = false }
+                        }) { Text("+ Create Savings account") }
+                    } else {
+                        Selector(if (withdraw) "From" else "To", savings.map { it.id }, goalAcc,
+                            display = { id -> accountLabel(snap, id, fmt) }, onSelect = { goalAcc = it })
+                    }
+                }
+                val everydayPicker: @Composable () -> Unit = {
+                    Selector(if (withdraw) "To" else "From", everyday.map { it.id }, other,
+                        display = { id -> accountLabel(snap, id, fmt) }, onSelect = { other = it })
+                }
+                if (withdraw) { savingsPicker(); everydayPicker() } else { everydayPicker(); savingsPicker() }
             }
         },
         confirmButton = {
@@ -466,13 +535,17 @@ private fun MoveGoalMoneyDialog(vm: MainViewModel, snap: Snapshot, g: GoalView, 
                 val a = Money.parse(amount)
                 val o = other
                 val ga = goalAcc
-                if (a == null || o == null || ga == null) { vm.toast("Pick an amount and both accounts"); return@TextButton }
-                vm.write(if (withdraw) "Withdrawn" else "Saved 🐷") {
-                    if (g.goal.accountId == null) vm.repo.saveGoal(g.goal.copy(accountId = ga))
-                    if (withdraw) vm.repo.moveGoalMoney(g.goal.id, a, ga, o, true) else vm.repo.moveGoalMoney(g.goal.id, a, o, ga, false)
+                when {
+                    a == null -> { vm.toast("Enter an amount"); return@TextButton }
+                    ga == null -> { vm.toast("Create or pick a Savings account"); return@TextButton }
+                    o == null || o == ga -> { vm.toast("Pick a different account"); return@TextButton }
+                }
+                vm.write(if (withdraw) "Took ${fmt.f(a!!)} out of ${g.goal.name}" else "Added ${fmt.f(a!!)} to ${g.goal.name} 🐷") {
+                    if (g.goal.accountId != ga) vm.repo.saveGoal(g.goal.copy(accountId = ga))
+                    if (withdraw) vm.repo.moveGoalMoney(g.goal.id, a, ga!!, o!!, true) else vm.repo.moveGoalMoney(g.goal.id, a, o!!, ga!!, false)
                 }
                 onDismiss()
-            }) { Text(if (withdraw) "Withdraw" else "Add") }
+            }) { Text(if (withdraw) "Take out" else "Add") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
@@ -481,7 +554,7 @@ private fun MoveGoalMoneyDialog(vm: MainViewModel, snap: Snapshot, g: GoalView, 
 @Composable
 private fun ChallengePresets(vm: MainViewModel, snap: Snapshot) {
     var capCat by remember { mutableStateOf<String?>("restaurants") }
-    var capAmount by remember { mutableStateOf("1500") }
+    var capAmount by remember { mutableStateOf("") }
     val week = Periods.weekContaining(snap.today, snap.settings.firstDayOfWeek)
     val cycle = snap.cycleRange
     fun add(kind: String, title: String, target: Int, start: LocalDate, end: LocalDate, cat: String? = null, amount: Long? = null) {
@@ -505,9 +578,12 @@ private fun ChallengePresets(vm: MainViewModel, snap: Snapshot) {
                 display = { id -> snap.category(id)?.let { "${it.emoji} ${it.name}" } ?: "" }, onSelect = { capCat = it }, modifier = Modifier.weight(1.4f))
             AmountField(capAmount, { capAmount = it }, "Under", Modifier.weight(1f))
         }
-        TextButton(onClick = {
+        TextButton(enabled = Money.parse(capAmount) != null && capCat != null, onClick = {
             val a = Money.parse(capAmount); val c = capCat
-            if (a != null && c != null) add("CATEGORY_CAP", "${snap.category(c)?.name} under ${Money.format(a)} this week", 0, week.start, week.end, c, a)
+            if (a != null && c != null) {
+                add("CATEGORY_CAP", "${snap.category(c)?.name} under ${Money.format(a)} this week", 0, week.start, week.end, c, a)
+                capAmount = ""
+            }
         }) { Text("Start") }
     }
 }

@@ -9,7 +9,10 @@ import kotlin.test.assertTrue
 
 class EnginesTest {
 
-    private val keywords = DefaultCategories.all.map { CategoryKeywords(it.key, it.keywords, it.kind) }
+    private val keywords = DefaultCategories.all.flatMap { d ->
+        listOf(CategoryKeywords(d.key, d.keywords, d.kind)) +
+            d.subcategories.map { sub -> DefaultCategories.subId(d.key, sub).let { id -> CategoryKeywords(id, DefaultCategories.keywordsFor(id), d.kind) } }
+    }
 
     @Test fun budgetStatusAndThresholds() {
         val range = DateRange(LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 27))
@@ -90,7 +93,8 @@ class EnginesTest {
         assertEquals(rupees(1500), c.amount); assertEquals("fuel", c.categoryId); assertEquals(PaymentMethod.CREDIT_CARD, c.payment)
 
         val b = QuickParse.parse("₹400 badminton court gpay", keywords)
-        assertEquals("badminton", b.categoryId); assertEquals(PaymentMethod.UPI, b.payment); assertEquals(rupees(400), b.amount)
+        assertEquals("sports__badminton", b.categoryId); assertEquals(PaymentMethod.UPI, b.payment); assertEquals(rupees(400), b.amount)
+        assertEquals("sports", QuickParse.parse("500 turf booking", keywords).categoryId)
 
         val ruled = QuickParse.parse("350 at Ramu's mess", keywords, mapOf("ramu's mess" to "restaurants"))
         assertEquals("restaurants", ruled.categoryId)
@@ -101,6 +105,15 @@ class EnginesTest {
 
         val decimal = QuickParse.parse("milk 32.50", keywords)
         assertEquals(3250L, decimal.amount); assertEquals("food", decimal.categoryId)
+    }
+
+    @Test fun sportsCategoryStructure() {
+        val sports = DefaultCategories.byKey.getValue("sports")
+        assertEquals("Sports", sports.name)
+        assertTrue("Badminton" in sports.subcategories)
+        assertEquals("sports__badminton", DefaultCategories.legacySportsTarget)
+        assertTrue("shuttle" in DefaultCategories.keywordsFor("sports__badminton"))
+        assertNull(DefaultCategories.byKey["badminton"])
     }
 
     @Test fun csvBankStatement() {
@@ -194,6 +207,19 @@ class EnginesTest {
         // Empty data -> no fabricated insights apart from the safe-to-spend statement.
         val empty = Analytics.insights(emptyList(), cur, prev, cats, emptyList(), LocalDate.of(2026, 11, 1), null, "this cycle")
         assertTrue(empty.isEmpty())
+    }
+
+    @Test fun noSpendDaysStartFromFirstEntry() {
+        val cats = DefaultCategories.all.associate { it.key to CategoryMeta(it.key, it.name, it.emoji, it.essential, it.fixed) }
+        val cur = DateRange(LocalDate.of(2026, 10, 28), LocalDate.of(2026, 11, 27))
+        val prev = DateRange(LocalDate.of(2026, 9, 28), LocalDate.of(2026, 10, 27))
+        // New user: first entry on 20 Nov, so 28 Oct-19 Nov must not count as "no-spend days".
+        val txs = listOf(LedgerTx("1", TxType.EXPENSE, rupees(250), "bank", categoryId = "restaurants", epochDay = LocalDate.of(2026, 11, 20).toEpochDay()))
+        val ins = Analytics.insights(txs, cur, prev, cats, emptyList(), LocalDate.of(2026, 11, 27), null, "this cycle")
+        assertTrue(ins.any { it.text.startsWith("7 no-spend days") }, ins.joinToString { it.text })
+        // Too new (first entry yesterday): say nothing rather than a meaningless count.
+        val fresh = listOf(LedgerTx("2", TxType.EXPENSE, rupees(250), "bank", categoryId = "restaurants", epochDay = LocalDate.of(2026, 11, 26).toEpochDay()))
+        assertTrue(Analytics.insights(fresh, cur, prev, cats, emptyList(), LocalDate.of(2026, 11, 27), null, "this cycle").none { it.text.contains("no-spend") })
     }
 
     @Test fun unusualSpending() {

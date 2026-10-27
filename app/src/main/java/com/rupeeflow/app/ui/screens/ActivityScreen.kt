@@ -144,7 +144,8 @@ fun ActivityScreen(
         item {
             OutlinedTextField(
                 value = query, onValueChange = { query = it },
-                placeholder = { Text("Search merchant, note, category, amount") },
+                placeholder = { Text("Search") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Default.Close, "Clear search") } },
                 singleLine = true, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),

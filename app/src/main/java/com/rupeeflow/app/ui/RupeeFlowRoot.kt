@@ -67,7 +67,7 @@ import com.rupeeflow.app.ui.components.MoneyFmt
 import com.rupeeflow.app.ui.screens.AccountsScreen
 import com.rupeeflow.app.ui.screens.ActivityScreen
 import com.rupeeflow.app.ui.screens.AddRequest
-import com.rupeeflow.app.ui.screens.AddTransactionSheet
+import com.rupeeflow.app.ui.screens.AddTransactionScreen
 import com.rupeeflow.app.ui.screens.BillsScreen
 import com.rupeeflow.app.ui.screens.CategoriesScreen
 import com.rupeeflow.app.ui.screens.DataScreen
@@ -125,7 +125,10 @@ private fun MainScaffold(vm: MainViewModel, pendingAction: String?, onActionCons
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route?.substringBefore("?") ?: "home"
     val snackbar = remember { SnackbarHostState() }
-    var addRequest by remember { mutableStateOf<AddRequest?>(null) }
+    fun openAdd(req: AddRequest) {
+        vm.addRequest = req
+        nav.navigate("add") { launchSingleTop = true }
+    }
 
     LaunchedEffect(Unit) {
         vm.messages.collect { m ->
@@ -135,12 +138,12 @@ private fun MainScaffold(vm: MainViewModel, pendingAction: String?, onActionCons
     }
     LaunchedEffect(pendingAction) {
         when (pendingAction) {
-            Notifier.ACTION_QUICK_ADD -> addRequest = AddRequest()
-            Notifier.ACTION_VOICE_ADD -> addRequest = AddRequest(startVoice = true)
+            Notifier.ACTION_QUICK_ADD -> openAdd(AddRequest())
+            Notifier.ACTION_VOICE_ADD -> openAdd(AddRequest(startVoice = true))
             Notifier.ACTION_OPEN_BILLS -> nav.goTab("bills")
             Notifier.ACTION_OPEN_BUDGETS -> nav.goTab("budgets")
             Notifier.ACTION_OPEN_INSIGHTS -> nav.goTab("insights")
-            "INCOME" -> addRequest = AddRequest(type = TxType.INCOME)
+            "INCOME" -> openAdd(AddRequest(type = TxType.INCOME))
         }
         if (pendingAction != null) onActionConsumed()
     }
@@ -164,11 +167,11 @@ private fun MainScaffold(vm: MainViewModel, pendingAction: String?, onActionCons
             AnimatedVisibility(isTab, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SmallFloatingActionButton(
-                        onClick = { addRequest = AddRequest(startVoice = true) },
+                        onClick = { openAdd(AddRequest(startVoice = true)) },
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     ) { Icon(Icons.Default.Mic, "Add by voice") }
                     FloatingActionButton(
-                        onClick = { addRequest = AddRequest() },
+                        onClick = { openAdd(AddRequest()) },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         shape = RoundedCornerShape(20.dp),
@@ -179,10 +182,10 @@ private fun MainScaffold(vm: MainViewModel, pendingAction: String?, onActionCons
     ) { padding ->
         NavHost(nav, startDestination = "home") {
             composable("home") {
-                HomeScreen(vm, snap, onAdd = { addRequest = it }, onEdit = { addRequest = AddRequest(editId = it) }, navigate = { nav.goTo(it) }, contentPadding = padding)
+                HomeScreen(vm, snap, onAdd = { openAdd(it) }, onEdit = { openAdd(AddRequest(editId = it)) }, navigate = { nav.goTo(it) }, contentPadding = padding)
             }
             composable("activity?cat={cat}", arguments = listOf(navArgument("cat") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
-                ActivityScreen(vm, snap, onEdit = { addRequest = AddRequest(editId = it) }, contentPadding = padding, initialCategory = e.arguments?.getString("cat"))
+                ActivityScreen(vm, snap, onEdit = { openAdd(AddRequest(editId = it)) }, contentPadding = padding, initialCategory = e.arguments?.getString("cat"))
             }
             composable("budgets?tab={tab}", arguments = listOf(navArgument("tab") { type = NavType.StringType; nullable = true; defaultValue = null })) { e ->
                 val tab = e.arguments?.getString("tab")?.let { t -> PlanTab.entries.firstOrNull { it.name == t } } ?: PlanTab.BUDGETS
@@ -190,7 +193,7 @@ private fun MainScaffold(vm: MainViewModel, pendingAction: String?, onActionCons
             }
             composable("bills") { BillsScreen(vm, snap, padding) }
             composable("insights") {
-                InsightsScreen(vm, snap, padding, onCategory = { nav.navigate("activity?cat=$it") }, onEdit = { addRequest = AddRequest(editId = it) })
+                InsightsScreen(vm, snap, padding, onCategory = { nav.navigate("activity?cat=$it") }, onEdit = { openAdd(AddRequest(editId = it)) })
             }
             composable("settings") { SettingsScreen(vm, snap, padding, navigate = { nav.goTo(it) }, onBack = { nav.popBackStack() }) }
             composable("accounts") { AccountsScreen(vm, snap, padding) { nav.popBackStack() } }
@@ -198,10 +201,17 @@ private fun MainScaffold(vm: MainViewModel, pendingAction: String?, onActionCons
             composable("rules") { RulesScreen(vm, snap, padding) { nav.popBackStack() } }
             composable("data") { DataScreen(vm, snap, padding) { nav.popBackStack() } }
             composable("import") { ImportScreen(vm, snap, padding) { nav.popBackStack() } }
+            composable("add") { entry ->
+                // Capture the request once per screen so later state changes can't swap or drop it.
+                val req = remember(entry) { vm.addRequest }
+                // Only ever remove the Add screen itself; never pop past it (that left a blank screen).
+                val closeAdd = { nav.popBackStack("add", inclusive = true); Unit }
+                if (req == null) LaunchedEffect(entry) { closeAdd() }
+                else AddTransactionScreen(vm, snap, req, onClose = closeAdd)
+            }
         }
     }
 
-    addRequest?.let { req -> AddTransactionSheet(vm, snap, req) { addRequest = null } }
 }
 
 private fun NavHostController.goTab(route: String) {

@@ -172,13 +172,13 @@ fun DataScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues,
         item {
             SectionLabel("Full backup")
             RfCard {
-                Text("Saves everything (accounts, transactions, budgets, bills, goals, settings) to a file you choose — Downloads, Google Drive, WhatsApp to yourself…",
+                Text("Save all your data to a file.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(backupPassword, { backupPassword = it }, label = { Text("Password (optional, encrypts the file)") }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth())
-                Text("If you forget the password, the backup can't be opened. Nobody can recover it.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                Text("A forgotten password can't be recovered.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Button(onClick = { createBackup.launch("RupeeFlow-backup-${snap.today}.json") }, enabled = !busy) { Text("Create backup") }
@@ -247,7 +247,7 @@ fun DataScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues,
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(mode == RestoreMode.REPLACE, { mode = RestoreMode.REPLACE })
-                        Column { Text("Replace everything"); Text("Current data is first saved to an automatic safety copy.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle) }
+                        Column { Text("Replace everything"); Text("A safety copy is made first.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle) }
                     }
                 }
             },
@@ -357,7 +357,7 @@ fun ImportScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValue
             item {
                 RfCard {
                     Text("🏦 Bank statement (CSV)", style = MaterialTheme.typography.titleSmall)
-                    Text("Download your statement as CSV from net banking, then pick it here. HDFC, SBI, ICICI, Axis and most UPI exports work.",
+                    Text("Pick a CSV statement from your bank.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = { pickCsv.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/vnd.ms-excel", "*/*")) }) { Text("Choose CSV file") }
@@ -366,7 +366,7 @@ fun ImportScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValue
             item {
                 RfCard {
                     Text("💬 Bank & UPI SMS", style = MaterialTheme.typography.titleSmall)
-                    Text("Reads debit/credit alerts already in your inbox, only when you tap the button. OTPs, offers and reminders are ignored. Nothing is saved until you review it, and nothing leaves your phone.",
+                    Text("Reads bank alerts on your phone. You review before saving.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -422,7 +422,7 @@ fun ImportScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValue
                         val kinds = if (r.row.isDebit) listOf(TxType.EXPENSE) else listOf(TxType.INCOME, TxType.REFUND)
                         kinds.forEach { t -> FilterChip(r.type == t, { rows[i] = r.copy(type = t) }, label = { Text(t.label) }) }
                     }
-                    if (r.row.isDebit) Text("Moved money to your own account? Untick it and add it as a Transfer so both sides are recorded.",
+                    if (r.row.isDebit) Text("Own-account transfer? Untick it.",
                         style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                     if (!r.type.isMovement) {
                         val kind = if (r.type == TxType.INCOME) CategoryKind.INCOME else CategoryKind.EXPENSE

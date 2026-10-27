@@ -97,7 +97,7 @@ fun OnboardingScreen(vm: MainViewModel, snap: Snapshot) {
     val favorites = remember { mutableStateListOf<String>() }
     var favTouched by remember { mutableStateOf(false) }
     val budgets = remember {
-        mutableStateMapOf("food" to "5000", "restaurants" to "3000", "fuel" to "2000", "entertainment" to "3000", "shopping" to "2500", "badminton" to "2000")
+        mutableStateMapOf("food" to "5000", "restaurants" to "3000", "fuel" to "2000", "entertainment" to "3000", "shopping" to "2500", "sports" to "2000")
     }
     val bills = remember { mutableStateListOf<BillDraft>() }
     var goalName by rememberSaveable { mutableStateOf("Emergency fund") }
@@ -167,29 +167,29 @@ fun OnboardingScreen(vm: MainViewModel, snap: Snapshot) {
                             Column {
                                 Text("₹", fontSize = 56.sp, color = Color.White)
                                 Text("RupeeFlow", style = MaterialTheme.typography.displaySmall, color = Color.White)
-                                Text("Every rupee earned, spent, saved or moved — easy to account for.", style = MaterialTheme.typography.titleMedium,
+                                Text("Know where every rupee goes.", style = MaterialTheme.typography.titleMedium,
                                     color = Color.White.copy(alpha = 0.9f))
                             }
                         }
-                        Bullet("⚡", "Add an expense in 4 taps — or just say “250 biryani UPI”.")
-                        Bullet("🗓️", "Built around your salary cycle (28th → 27th), not the calendar.")
-                        Bullet("🧘", "One number that matters: how much is safe to spend today.")
-                        Bullet("🔒", "Offline and private. No account, no internet permission.")
+                        Bullet("⚡", "Add expenses in seconds — or just say them.")
+                        Bullet("🗓️", "Built around your salary date.")
+                        Bullet("🧘", "See what's safe to spend today.")
+                        Bullet("🔒", "Private. Works offline.")
                     }
                     1 -> {
-                        Title("When does your salary arrive?", "Your money month runs from this day to the day before it next month.")
+                        Title("When does your salary arrive?", "Your month runs from this day.")
                         DayGrid(salaryDay) { salaryDay = it }
                         val c = SalaryCycle(salaryDay).cycleContaining(snap.today)
                         RfCard { Text("Current cycle: ${c.label()}", style = MaterialTheme.typography.bodyMedium) }
                     }
                     2 -> {
-                        Title("Your salary", "Optional. Used for reminders and the salary-day prompt — it's only counted once you confirm it arrived.")
+                        Title("Your salary", "Optional — used for salary-day reminders.")
                         AmountField(salary, { salary = it }, "Monthly take-home")
-                        OutlinedTextField(name, { name = it.take(24) }, label = { Text("Your first name (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(name, { name = it.take(24) }, label = { Text("Your first name (optional)") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys, modifier = Modifier.fillMaxWidth())
                     }
                     3 -> {
-                        Title("Your money right now", "Enter today's balances. You can add more accounts later.")
-                        OutlinedTextField(bankName, { bankName = it }, label = { Text("Main bank account name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Title("Your money right now", "Today's balances. You can add more later.")
+                        OutlinedTextField(bankName, { bankName = it }, label = { Text("Main bank account name") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys, modifier = Modifier.fillMaxWidth())
                         AmountField(bankBal, { bankBal = it }, "Bank balance")
                         Text("UPI payments will come out of this account.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                         AmountField(cashBal, { cashBal = it }, "Cash in wallet")
@@ -205,7 +205,7 @@ fun OnboardingScreen(vm: MainViewModel, snap: Snapshot) {
                         if (hasSavings) AmountField(savingsBal, { savingsBal = it }, "Savings balance")
                     }
                     4 -> {
-                        Title("What do you spend on most?", "Tap to star favourites — they show first when adding. All 25 categories stay available.")
+                        Title("What do you spend on most?", "Favourites show first when you add.")
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val defaults = snap.categories.filter { it.favorite && it.parentId == null }.map { it.id }
                             snap.categories.filter { it.parentId == null && it.categoryKind() == CategoryKind.EXPENSE }.forEach { c ->
@@ -218,7 +218,7 @@ fun OnboardingScreen(vm: MainViewModel, snap: Snapshot) {
                         }
                     }
                     5 -> {
-                        Title("Budgets per salary cycle", "Suggested starting points — change or clear any. You'll get alerts at 50/75/90/100%.")
+                        Title("Budgets per salary cycle", "Change or clear any.")
                         budgets.keys.toList().forEach { id ->
                             val c = snap.category(id) ?: return@forEach
                             AmountField(budgets[id] ?: "", { budgets[id] = it }, "${c.emoji} ${c.name}")
@@ -228,9 +228,9 @@ fun OnboardingScreen(vm: MainViewModel, snap: Snapshot) {
                             style = MaterialTheme.typography.labelLarge)
                     }
                     6 -> {
-                        Title("Regular bills", "Tap the ones you pay. You'll be reminded before each is due, and they only count as spent when you confirm.")
+                        Title("Regular bills", "Pick the ones you pay. We'll remind you.")
                         val presets = listOf(
-                            BillDraft("🏋️", "Gym", "gym", "1500", 5), BillDraft("🏸", "Badminton coaching", "badminton", "2000", 1),
+                            BillDraft("🏋️", "Gym", "gym", "1500", 5), BillDraft("🏸", "Badminton coaching", "sports__badminton", "2000", 1),
                             BillDraft("🌐", "Wi-Fi", "internet", "799", 10), BillDraft("📱", "Mobile recharge", "mobile", "349", 15),
                             BillDraft("🎬", "Netflix", "subscriptions", "649", 12), BillDraft("▶️", "YouTube Premium", "subscriptions", "149", 20),
                             BillDraft("🎵", "Spotify", "subscriptions", "119", 18), BillDraft("🏠", "Rent", "rent", "15000", 1),
@@ -248,20 +248,20 @@ fun OnboardingScreen(vm: MainViewModel, snap: Snapshot) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     AmountField(b.amount, { v -> bills[i] = b.copy(amount = v) }, "Amount", Modifier.weight(1f))
                                     OutlinedTextField(b.day.toString(), { v -> v.toIntOrNull()?.takeIf { it in 1..31 }?.let { bills[i] = b.copy(day = it) } },
-                                        label = { Text("Due day") }, singleLine = true, modifier = Modifier.width(100.dp))
+                                        label = { Text("Due day") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NumberKeys, modifier = Modifier.width(100.dp))
                                 }
                             }
                         }
                     }
                     7 -> {
-                        Title("Save with purpose", "Optional. A goal and a savings plan per cycle. Progress only counts money you actually move.")
-                        OutlinedTextField(goalName, { goalName = it }, label = { Text("Goal") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Title("Save with purpose", "Optional. You can set this later.")
+                        OutlinedTextField(goalName, { goalName = it }, label = { Text("Goal") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys, modifier = Modifier.fillMaxWidth())
                         AmountField(goalTarget, { goalTarget = it }, "Target amount")
                         AmountField(plan, { plan = it }, "Set aside every salary cycle")
-                        Text("The savings plan is held back from safe-to-spend until you transfer it.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                        Text("Kept aside from safe-to-spend.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                     }
                     8 -> {
-                        Title("Gentle reminders", "The #1 reason people lose track is forgetting to log. A nightly nudge fixes that.")
+                        Title("Gentle reminders", "A daily nudge helps you keep track.")
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Daily check-in")
@@ -280,10 +280,10 @@ fun OnboardingScreen(vm: MainViewModel, snap: Snapshot) {
                         Spacer(Modifier.height(40.dp))
                         Text("🎉", fontSize = 64.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                         Text("You're set", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                        Text("Try it now: tap + and add today's first expense. Everything else updates instantly.",
+                        Text("Tap + to add your first expense.",
                             style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         RfCard {
-                            Text("Tip: long-press the app icon for “Add expense” and “Say an expense” shortcuts, or add the home-screen widget.",
+                            Text("Tip: long-press the app icon for quick shortcuts.",
                                 style = MaterialTheme.typography.bodySmall)
                         }
                     }

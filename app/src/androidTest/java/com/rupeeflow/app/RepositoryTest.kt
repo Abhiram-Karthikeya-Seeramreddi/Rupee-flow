@@ -133,6 +133,35 @@ class RepositoryTest {
         assertEquals(2, s.transactions.size)
     }
 
+    @Test fun legacyBadmintonCategoryMovesUnderSports() = runTest {
+        // Recreate a v1.0 database: "Badminton & sports" root with its own subcategory.
+        db.categories().upsert(com.rupeeflow.app.data.CategoryEntity("badminton", "Badminton & sports", "🏸", 0, "EXPENSE", favorite = true))
+        db.categories().upsert(com.rupeeflow.app.data.CategoryEntity("badminton__shuttles", "Shuttles", "🏸", 0, "EXPENSE", parentId = "badminton"))
+        val d = LocalDate.of(2026, 10, 1)
+        db.transactions().insert(t("a", TxType.EXPENSE, rupees(400), d, "badminton"))
+        db.transactions().insert(t("b", TxType.EXPENSE, rupees(250), d, "badminton__shuttles"))
+        db.budgets().upsert(BudgetEntity("bb", "badminton", rupees(2000), "SALARY_CYCLE"))
+
+        repo.ensureDefaultCategories()
+        repo.ensureDefaultCategories() // idempotent
+
+        val raw = repo.loadRaw()
+        assertNull(raw.categories.firstOrNull { it.id == "badminton" || it.id.startsWith("badminton__") })
+        assertEquals("Sports", raw.categories.single { it.id == "sports" }.name)
+        assertEquals("sports", raw.categories.single { it.id == "sports__badminton" }.parentId)
+        assertEquals(setOf("sports__badminton"), raw.transactions.map { it.categoryId }.toSet())
+        assertEquals("sports", raw.budgets.single { it.id == "bb" }.categoryId)
+        val s = snap(LocalDate.of(2026, 10, 5))
+        assertEquals(rupees(650), s.budgets.single { it.budget.id == "bb" }.status.spent, "subcategory spending rolls into the Sports budget")
+    }
+
+    @Test fun savingsAccountIsCreatedOnce() = runTest {
+        val a = repo.ensureSavingsAccount()
+        val b = repo.ensureSavingsAccount()
+        assertEquals(a, b) // the "sav" account from setUp is SAVINGS too, so it's reused
+        assertEquals("sav", a)
+    }
+
     @Test fun backupRoundTripWithEncryption() = runTest {
         val d = LocalDate.of(2026, 11, 1)
         repo.saveTransaction(t("x", TxType.EXPENSE, rupees(420), d, "food"))

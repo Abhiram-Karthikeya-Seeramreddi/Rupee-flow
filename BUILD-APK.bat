@@ -30,7 +30,7 @@ echo.
 rem ---- Signed release if you have the private key, otherwise a debug build anyone can make
 set "TASK=assembleRelease"
 set "OUT=app\build\outputs\apk\release\app-release.apk"
-set "NAME=RupeeFlow-1.0.0.apk"
+set "NAME=RupeeFlow-1.1.0.apk"
 if not exist keystore.properties (
   set "TASK=assembleDebug"
   set "OUT=app\build\outputs\apk\debug\app-debug.apk"

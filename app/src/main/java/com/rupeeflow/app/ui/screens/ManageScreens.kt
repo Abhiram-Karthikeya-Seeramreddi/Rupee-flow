@@ -97,7 +97,7 @@ fun AccountsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
                 KeyValueRow("Investments", fmt.f(p.investments), MaterialTheme.colorScheme.primary)
                 if (p.cardDues > 0) KeyValueRow("Credit card owed", "−" + fmt.f(p.cardDues), Rf.colors.negative)
                 KeyValueRow("Net worth", fmt.f(p.netWorth), bold = true)
-                Text("UPI isn't an account — UPI payments come out of the bank account they're linked to.",
+                Text("UPI payments come from your bank account.",
                     style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
             }
         }
@@ -168,7 +168,7 @@ fun AccountEditor(vm: MainViewModel, snap: Snapshot, a: AccountEntity, isNew: Bo
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(emoji, { if (it.length <= 4) emoji = it }, label = { Text("Icon") }, singleLine = true, modifier = Modifier.width(80.dp))
-                    OutlinedTextField(name, { name = it }, label = { Text("Name (e.g. HDFC Savings)") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(name, { name = it }, label = { Text("Name (e.g. HDFC Savings)") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys, modifier = Modifier.weight(1f))
                 }
                 AmountField(opening, { opening = it }, if (type == AccountType.CREDIT_CARD) "Amount owed when you start" else "Balance when you start")
                 if (type != AccountType.CREDIT_CARD) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -178,13 +178,13 @@ fun AccountEditor(vm: MainViewModel, snap: Snapshot, a: AccountEntity, isNew: Bo
                 if (type != AccountType.CREDIT_CARD) Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Count as spendable")
-                        Text("Off for money you've set aside (emergency fund, separate savings).", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                        Text("Turn off for money set aside.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                     }
                     Switch(spendable, { spendable = it })
                 }
                 if (!isNew) {
                     Row(verticalAlignment = Alignment.CenterVertically) { Text("Archived (hidden)", modifier = Modifier.weight(1f)); Switch(archived, { archived = it }) }
-                    Text("Changing the starting balance shifts all balances. To match your bank today, use Reconcile instead.",
+                    Text("To match your bank today, use Reconcile.",
                         style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                     TextButton(onClick = { confirmDelete = true }) { Text("Delete account", color = MaterialTheme.colorScheme.error) }
                 }
@@ -208,7 +208,7 @@ fun AccountEditor(vm: MainViewModel, snap: Snapshot, a: AccountEntity, isNew: Bo
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
-    if (confirmDelete) ConfirmDialog("Delete ${a.name}?", "If it has transactions it will be archived instead, so your history stays correct.", "Continue",
+    if (confirmDelete) ConfirmDialog("Delete ${a.name}?", "If it has entries, it will be archived instead.", "Continue",
         onConfirm = {
             confirmDelete = false
             vm.write { vm.toast(vm.repo.deleteOrArchiveAccount(a.id)) }
@@ -236,7 +236,7 @@ private fun ReconcileDialog(vm: MainViewModel, snap: Snapshot, a: AccountEntity,
                     Text(if (d == 0L) "Already matches 👍" else "We'll add a ${fmt.f(d, sign = true)} adjustment dated today. Your past entries stay untouched.",
                         style = MaterialTheme.typography.bodySmall, color = if (d == 0L) Rf.colors.positive else Rf.colors.warning)
                 }
-                Text("Tip: a gap usually means a missed expense. Check Activity first if you can.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                Text("A gap usually means a missed expense.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
             }
         },
         confirmButton = {
@@ -274,7 +274,7 @@ fun CategoriesScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingV
                 FilterChip(kind == CategoryKind.INCOME, { kind = CategoryKind.INCOME }, label = { Text("Income") })
                 FilterChip(showArchived, { showArchived = !showArchived }, label = { Text("Show archived") })
             }
-            Text("Transfers, savings and investments aren't categories — they're transaction types, so they never count as spending.",
+            Text("Transfers and savings never count as spending.",
                 style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle, modifier = Modifier.padding(top = 6.dp))
         }
         items(roots, key = { it.id }) { c ->
@@ -330,7 +330,7 @@ private fun CategoryEditor(vm: MainViewModel, snap: Snapshot, c: CategoryEntity,
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(emoji, { if (it.length <= 4) emoji = it }, label = { Text("Icon") }, singleLine = true, modifier = Modifier.width(80.dp))
-                    OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys, modifier = Modifier.weight(1f))
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     palette.forEach { p ->
@@ -395,7 +395,7 @@ fun RulesScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues
     ) {
         item { ScreenTitle("Auto-categorise", onBack) }
         item {
-            Text("When a note, merchant, SMS or bank row contains a keyword, RupeeFlow suggests the category. It learns from what you save, and you can add your own.",
+            Text("Keywords that pick a category automatically.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item {
@@ -418,6 +418,6 @@ fun RulesScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues
                 IconButton(onClick = { vm.write { vm.repo.deleteRule(k) } }) { Icon(Icons.Default.Delete, "Delete rule") }
             }
         }
-        if (snap.rules.isEmpty()) item { Text("No learned rules yet. Built-in keywords (Swiggy, Uber, petrol, Netflix…) already work.", color = Rf.colors.subtle) }
+        if (snap.rules.isEmpty()) item { Text("None yet. Common words like Swiggy or Uber already work.", color = Rf.colors.subtle) }
     }
 }

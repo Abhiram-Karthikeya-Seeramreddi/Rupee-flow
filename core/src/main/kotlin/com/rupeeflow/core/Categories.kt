@@ -12,6 +12,8 @@ data class DefaultCategory(
     val fixed: Boolean = false,
     val subcategories: List<String> = emptyList(),
     val keywords: List<String> = emptyList(),
+    /** Keywords that should pick a specific subcategory, by subcategory name. */
+    val subKeywords: Map<String, List<String>> = emptyMap(),
 )
 
 /** Built-in categories. Keys are stable identifiers; names can be renamed by the user. */
@@ -36,9 +38,16 @@ object DefaultCategories {
             keywords = listOf("recharge", "jio", "airtel", "vodafone", "vi recharge", "prepaid", "postpaid", "bsnl")),
         DefaultCategory("internet", "Internet & broadband", "🌐", 0xFF3B8FD9, essential = true, fixed = true,
             keywords = listOf("wifi", "wi-fi", "broadband", "act fibernet", "internet", "fiber", "hathway", "airtel xstream")),
-        DefaultCategory("badminton", "Badminton & sports", "🏸", 0xFF17B890,
-            subcategories = listOf("Court booking", "Coaching", "Shuttles", "Gear"),
-            keywords = listOf("badminton", "shuttle", "shuttles", "court", "racket", "racquet", "coaching", "playo", "turf", "cricket", "football")),
+        DefaultCategory("sports", "Sports", "🏅", 0xFF17B890,
+            subcategories = listOf("Badminton", "Cricket", "Football", "Swimming", "Sports gear"),
+            keywords = listOf("sports", "sport", "turf", "playo", "match", "tournament", "stadium"),
+            subKeywords = mapOf(
+                "Badminton" to listOf("badminton", "shuttle", "shuttles", "shuttlecock", "court", "racket", "racquet", "coaching"),
+                "Cricket" to listOf("cricket", "bat", "nets"),
+                "Football" to listOf("football", "futsal"),
+                "Swimming" to listOf("swimming", "swim", "pool"),
+                "Sports gear" to listOf("decathlon", "jersey", "sports shoes", "studs"),
+            )),
         DefaultCategory("gym", "Gym & fitness", "🏋️", 0xFFE5534B,
             keywords = listOf("gym", "fitness", "protein", "yoga", "cult", "cultfit", "workout", "supplements")),
         DefaultCategory("health", "Health & medical", "💊", 0xFFD9455F, essential = true,
@@ -80,4 +89,20 @@ object DefaultCategories {
     )
 
     val byKey: Map<String, DefaultCategory> = all.associateBy { it.key }
+
+    /** Stable id for a built-in subcategory, e.g. ("sports", "Badminton") -> "sports__badminton". */
+    fun subId(parentKey: String, name: String): String =
+        parentKey + "__" + name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
+
+    /** Keywords for any built-in category or subcategory id. */
+    fun keywordsFor(id: String): List<String> {
+        byKey[id]?.let { return it.keywords }
+        val parentKey = id.substringBefore("__", "")
+        val parent = byKey[parentKey] ?: return emptyList()
+        return parent.subKeywords.entries.firstOrNull { subId(parentKey, it.key) == id }?.value ?: emptyList()
+    }
+
+    /** Ids that existed in v1.0 and were replaced, mapped to their new home. */
+    const val LEGACY_SPORTS_ROOT = "badminton"
+    val legacySportsTarget: String get() = subId("sports", "Badminton")
 }

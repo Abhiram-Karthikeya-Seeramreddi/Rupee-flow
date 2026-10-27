@@ -304,7 +304,7 @@ object SnapshotBuilder {
 
         val ruleMap = rules.associate { it.keyword to it.categoryId }
         val keywordList = categories.filter { !it.archived }.map { c ->
-            val defaults = DefaultCategories.byKey[c.id]?.keywords ?: emptyList()
+            val defaults = DefaultCategories.keywordsFor(c.id)
             CategoryKeywords(c.id, defaults + c.name.lowercase(), c.categoryKind())
         }
 

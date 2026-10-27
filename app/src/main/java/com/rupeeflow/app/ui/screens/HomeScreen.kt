@@ -93,7 +93,7 @@ fun HomeScreen(
                     val greet = when { h < 12 -> "Good morning"; h < 17 -> "Good afternoon"; else -> "Good evening" }
                     Text(greet + (snap.settings.userName.takeIf { it.isNotBlank() }?.let { ", $it" } ?: ""),
                         style = MaterialTheme.typography.headlineSmall)
-                    Text("Cycle ${snap.cycleRange.label()} · ${snap.cycleRange.daysLeft(snap.today)} days left",
+                    Text(snap.cycleRange.daysLeft(snap.today).let { n -> if (n == 1) "Last day of this cycle" else "$n days left in this cycle" },
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { vm.updateSettings { it.copy(hideAmounts = !it.hideAmounts) } }) {
@@ -112,8 +112,8 @@ fun HomeScreen(
                     Text("💼", style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Salary day " + if (snap.daysToSalary <= 2 && snap.daysToSalary > 0) "is coming" else "— did it arrive?", style = MaterialTheme.typography.titleSmall)
-                        Text("Expected ${fmt.f(snap.settings.expectedSalary)}. It's only counted once you confirm.", style = MaterialTheme.typography.bodySmall)
+                        Text("Did your salary arrive?", style = MaterialTheme.typography.titleSmall)
+                        Text("Expected ${fmt.f(snap.settings.expectedSalary)}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -124,7 +124,7 @@ fun HomeScreen(
                         if (acc == null) vm.toast("Add a bank account first") else
                             vm.write("Salary recorded 🎉") { vm.repo.recordSalary(snap.settings.expectedSalary, acc.id, snap.today) }
                     }) { Text("Received ${fmt.f(snap.settings.expectedSalary)}") }
-                    OutlinedButton(onClick = { onAdd(AddRequest(type = com.rupeeflow.core.TxType.INCOME)) }) { Text("Different amount") }
+                    OutlinedButton(onClick = { onAdd(AddRequest(type = com.rupeeflow.core.TxType.INCOME)) }) { Text("Other amount") }
                 }
             }
         }
@@ -174,8 +174,8 @@ fun HomeScreen(
             SectionHeader("Budgets", action = if (catBudgets.isEmpty()) "Set up" else "All", onAction = { navigate("budgets") })
             if (catBudgets.isEmpty()) {
                 RfCard(onClick = { navigate("budgets") }) {
-                    Text("Give each category a limit", style = MaterialTheme.typography.titleSmall)
-                    Text("e.g. Food ₹5,000, Badminton ₹2,000 per salary cycle. You'll get a heads-up at 50/75/90/100%.",
+                    Text("Set budgets", style = MaterialTheme.typography.titleSmall)
+                    Text("e.g. Food ₹5,000 a month",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else RfCard {
@@ -199,8 +199,8 @@ fun HomeScreen(
             SectionHeader("Upcoming bills", action = if (snap.bills.isEmpty()) "Add" else "All", onAction = { navigate("bills") })
             if (upcoming.isEmpty()) {
                 RfCard(onClick = { navigate("bills") }) {
-                    Text("Track Netflix, gym, Wi-Fi, EMIs…", style = MaterialTheme.typography.titleSmall)
-                    Text("Get reminded before they're due. A bill only counts as spent when you confirm it's paid.",
+                    Text("Add your bills", style = MaterialTheme.typography.titleSmall)
+                    Text("Netflix, gym, Wi-Fi, EMI — get reminders",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else RfCard(padding = 8) {
@@ -226,7 +226,7 @@ fun HomeScreen(
         if (snap.homeInsights.isNotEmpty()) item {
             SectionHeader("Insights", action = "More", onAction = { navigate("insights") })
             RfCard(padding = 12) {
-                snap.homeInsights.forEach { InsightRow(it) }
+                snap.homeInsights.take(2).forEach { InsightRow(it) }
             }
         }
 
@@ -235,7 +235,7 @@ fun HomeScreen(
         if (recent.isEmpty()) item {
             RfCard {
                 Text("No entries yet", style = MaterialTheme.typography.titleSmall)
-                Text("Tap the + button and add your first expense. It takes about 4 taps.", style = MaterialTheme.typography.bodySmall,
+                Text("Tap + to add your first expense.", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else item {
@@ -285,7 +285,7 @@ private fun HeroCard(snap: Snapshot) {
                     if (s.plannedSavingsLeft > 0) HeroLine("− Savings plan still to move", fmt.f(s.plannedSavingsLeft), w)
                     HeroLine("= Free until salary", fmt.f(s.free), w, bold = true)
                     HeroLine("÷ ${s.daysLeft} days left (incl. today)", fmt.f(s.perDay) + "/day", w)
-                    Text("Spendable = bank, cash and wallets you've marked as spendable. Savings and investments aren't included.",
+                    Text("Savings and investments aren't included.",
                         style = MaterialTheme.typography.labelSmall, color = w.copy(alpha = 0.7f), modifier = Modifier.padding(top = 6.dp))
                 }
             }
@@ -310,14 +310,13 @@ private fun LoggingNudge(vm: MainViewModel, snap: Snapshot, onAdd: (AddRequest) 
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Anything spent today?", style = MaterialTheme.typography.titleSmall)
-                    Text(if (snap.streak > 0) "Keep your ${snap.streak}-day streak going 🔥" else "Log it now or mark a no-spend day.",
-                        style = MaterialTheme.typography.bodySmall)
+                    if (snap.streak > 0) Text("${snap.streak}-day streak 🔥", style = MaterialTheme.typography.bodySmall)
                 }
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { onAdd(AddRequest()) }) { Text("Add expense") }
-                FilledTonalButton(onClick = { vm.write("Nice — a no-spend day 🌱") { vm.repo.setNoSpendToday(true, snap.today) } }) { Text("No spend today") }
+                FilledTonalButton(onClick = { vm.write("No-spend day saved 🌱") { vm.repo.setNoSpendToday(true, snap.today) } }) { Text("Nothing spent") }
             }
         }
     } else {
@@ -328,8 +327,8 @@ private fun LoggingNudge(vm: MainViewModel, snap: Snapshot, onAdd: (AddRequest) 
             Text("🔥", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.width(10.dp))
             Text(
-                if (snap.noSpendToday && snap.spentToday == 0L) "No-spend day logged. ${snap.streak}-day logging streak!"
-                else "${snap.streak}-day logging streak. Every rupee accounted for.",
+                if (snap.noSpendToday && snap.spentToday == 0L) "No-spend day · ${snap.streak}-day streak"
+                else "${snap.streak}-day streak",
                 style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f),
             )
             if (snap.noSpendToday) Text("Undo", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge,
@@ -343,26 +342,22 @@ private fun CycleCard(snap: Snapshot, navigate: (String) -> Unit) {
     val fmt = LocalMoney.current
     RfCard(onClick = { navigate("insights") }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("This salary cycle", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text("This cycle", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
             Pill("${snap.cycleRange.daysElapsed(snap.today)}/${snap.cycleRange.days} days", MaterialTheme.colorScheme.primary)
         }
         Spacer(Modifier.height(8.dp))
-        KeyValueRow("Income received", fmt.f(snap.incomeCycle), Rf.colors.positive)
+        KeyValueRow("Income", fmt.f(snap.incomeCycle), Rf.colors.positive)
         KeyValueRow("Spent", fmt.f(snap.spentCycle))
-        KeyValueRow("Moved to savings & investments", fmt.f(snap.savedCycle), MaterialTheme.colorScheme.primary)
+        KeyValueRow("Saved", fmt.f(snap.savedCycle), MaterialTheme.colorScheme.primary)
         if (snap.settings.plannedSavingsPerCycle > 0) {
             val planned = snap.settings.plannedSavingsPerCycle
             ProgressBar(snap.savedCycle.toFloat() / planned, MaterialTheme.colorScheme.primary, Modifier.padding(vertical = 4.dp), height = 6)
-            Text(if (snap.plannedSavingsLeft > 0) "${fmt.f(snap.plannedSavingsLeft)} to go for your ${fmt.f(planned)} savings plan" else "Savings plan done ✅",
+            Text(if (snap.plannedSavingsLeft > 0) "${fmt.f(snap.plannedSavingsLeft)} left to save" else "Savings plan done ✅",
                 style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
         }
         Spacer(Modifier.height(4.dp))
-        KeyValueRow("Available in spendable accounts", fmt.f(snap.position.spendable), bold = true)
-        if (snap.position.savings + snap.position.investments > 0)
-            KeyValueRow("Savings + investments (total)", fmt.f(snap.position.savings + snap.position.investments))
-        if (snap.position.cardDues > 0) KeyValueRow("Credit card owed", fmt.f(snap.position.cardDues), Rf.colors.negative)
-        if (snap.scheduled.isNotEmpty()) Text("${snap.scheduled.size} future-dated entr${if (snap.scheduled.size == 1) "y" else "ies"} not counted yet.",
-            style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+        KeyValueRow("Available", fmt.f(snap.position.spendable), bold = true)
+        if (snap.position.cardDues > 0) KeyValueRow("Card owed", fmt.f(snap.position.cardDues), Rf.colors.negative)
         Text("Next salary ${fullDate(snap.nextSalaryDate)}", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
     }
 }

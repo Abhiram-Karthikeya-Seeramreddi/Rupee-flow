@@ -16,7 +16,7 @@ keystore.properties
 # Build outputs and logs
 *.apk
 *.aab
-build-log.txt
+build*-log.txt
 sdk-log*.txt
 local.properties
 .kotlin/

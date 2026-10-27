@@ -107,9 +107,9 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
         item {
             SectionLabel("Salary & cycle")
             RfCard(padding = 12) {
-                SettingRow("Salary", "${if (s.expectedSalary > 0) fmt.f(s.expectedSalary) else "Not set"} on day ${s.salaryDay} of each month", onClick = { salaryDialog = true })
-                SettingRow("Cycle", "${snap.cycleRange.label()} (next: ${snap.cycle.next(snap.cycleRange).label()})")
-                SettingRow("Start cycle when salary actually arrives", "If it comes a few days early or late, the cycle follows the real date",
+                SettingRow("Salary", "Day ${s.salaryDay} · ${if (s.expectedSalary > 0) fmt.f(s.expectedSalary) else "amount not set"}", onClick = { salaryDialog = true })
+                SettingRow("Cycle", "${snap.cycleRange.label()} · next from ${snap.cycle.next(snap.cycleRange).start.format(java.time.format.DateTimeFormatter.ofPattern("d MMM"))}")
+                SettingRow("Start cycle when salary actually arrives", "Handles early or late salary",
                     trailing = { Switch(s.followActualSalary, { v -> vm.updateSettings { it.copy(followActualSalary = v) } }) })
                 Text("First day of week", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 8.dp, start = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(4.dp)) {
@@ -125,9 +125,9 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
             SectionLabel("Money setup")
             RfCard(padding = 12) {
                 SettingRow("Accounts & balances", "${snap.activeAccounts.size} accounts · reconcile with your bank", onClick = { navigate("accounts") })
-                SettingRow("Categories", "Add, rename, archive, sub-categories, essentials", onClick = { navigate("categories") })
+                SettingRow("Categories", "Add, rename, sub-categories", onClick = { navigate("categories") })
                 SettingRow("Budgets, goals & savings plan", onClick = { navigate("budgets") })
-                SettingRow("Auto-categorise rules", "${snap.rules.size} learned keyword${if (snap.rules.size == 1) "" else "s"} (e.g. swiggy → Restaurants)", onClick = { navigate("rules") })
+                SettingRow("Auto-categorise rules", "${snap.rules.size} learned keyword${if (snap.rules.size == 1) "" else "s"}", onClick = { navigate("rules") })
                 Text("Default payment method", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 8.dp, start = 4.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(4.dp)) {
                     listOf(PaymentMethod.UPI, PaymentMethod.CASH, PaymentMethod.DEBIT_CARD, PaymentMethod.CREDIT_CARD).forEach { p ->
@@ -140,7 +140,7 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
         item {
             SectionLabel("Reminders")
             RfCard(padding = 12) {
-                SettingRow("Daily check-in", "Around ${"%02d:%02d".format(s.dailyReminderMinute / 60, s.dailyReminderMinute % 60)} — asks if you've logged today",
+                SettingRow("Daily check-in", "Around ${"%02d:%02d".format(s.dailyReminderMinute / 60, s.dailyReminderMinute % 60)}",
                     onClick = {
                         TimePickerDialog(ctx, { _, h, m -> vm.updateSettings(reschedule = true) { it.copy(dailyReminderMinute = h * 60 + m, dailyReminder = true) } },
                             s.dailyReminderMinute / 60, s.dailyReminderMinute % 60, false).show()
@@ -152,7 +152,7 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
                     trailing = { Switch(s.billReminders, { v -> if (v) ensureNotifPermission(); vm.updateSettings { it.copy(billReminders = v) } }) })
                 SettingRow("Salary & new cycle", trailing = { Switch(s.cycleReminders, { v -> vm.updateSettings { it.copy(cycleReminders = v) } }) })
                 SettingRow("Savings plan check", "Near the end of each cycle", trailing = { Switch(s.savingsReminders, { v -> vm.updateSettings { it.copy(savingsReminders = v) } }) })
-                Text("Android may delay reminders a little to save battery; they're never sent more than once.",
+                Text("Reminders may arrive a little late to save battery.",
                     style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle, modifier = Modifier.padding(4.dp))
             }
         }
@@ -177,7 +177,7 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
                     trailing = { Switch(s.hideInRecents, { v -> vm.updateSettings { it.copy(hideInRecents = v) } }) })
                 SettingRow("Hide amounts", "Shows ₹ •••• until you tap the eye on Home",
                     trailing = { Switch(s.hideAmounts, { v -> vm.updateSettings { it.copy(hideAmounts = v) } }) })
-                Text("Everything stays on this phone. The app has no internet permission and no account.",
+                Text("Your data never leaves this phone.",
                     style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle, modifier = Modifier.padding(4.dp))
             }
         }
@@ -197,7 +197,7 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
                     delay(600)
                     if (name != s.userName) vm.updateSettings { it.copy(userName = name.take(24)) }
                 }
-                OutlinedTextField(name, { name = it.take(24) }, label = { Text("Your name (for greetings)") },
+                OutlinedTextField(name, { name = it.take(24) }, label = { Text("Your name") }, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys,
                     singleLine = true, modifier = Modifier.fillMaxWidth().padding(4.dp))
             }
         }
@@ -205,7 +205,7 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
         item {
             SectionLabel("Danger zone")
             RfCard(padding = 12) {
-                SettingRow("Reset all data", "Deletes everything on this phone. You'll be offered a backup first.", onClick = { resetStep = 1 })
+                SettingRow("Reset all data", "Deletes all data on this phone", onClick = { resetStep = 1 })
             }
         }
         item {
@@ -216,7 +216,7 @@ fun SettingsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
 
     if (salaryDialog) SalaryDialog(vm, snap) { salaryDialog = false }
     when (resetStep) {
-        1 -> ConfirmDialog("Back up first?", "Resetting can't be undone. Save a backup file first so you can restore later.", "Back up now",
+        1 -> ConfirmDialog("Back up first?", "This can't be undone. Save a backup first?", "Back up now",
             onConfirm = { resetStep = 0; navigate("data") }, onDismiss = { resetStep = 2 }, dismiss = "Skip backup")
         2 -> ResetConfirm(onConfirm = {
             resetStep = 0
@@ -241,7 +241,7 @@ private fun ResetConfirm(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         title = { Text("Delete all data?") },
         text = {
             Column {
-                Text("All accounts, transactions, budgets, bills, goals and settings will be removed from this phone. Type RESET to confirm.")
+                Text("Everything will be deleted. Type RESET to confirm.")
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(typed, { typed = it }, singleLine = true)
             }
@@ -263,7 +263,7 @@ private fun SalaryDialog(vm: MainViewModel, snap: Snapshot, onDismiss: () -> Uni
                 AmountField(amount, { amount = it }, "Monthly take-home (expected)")
                 Text("Credited on day", style = MaterialTheme.typography.labelMedium)
                 DayGrid(day) { day = it }
-                Text("Expected salary is only a reminder. Your balance changes when you confirm it arrived.",
+                Text("Used for reminders only.",
                     style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
             }
         },
@@ -285,6 +285,6 @@ fun DayGrid(selected: Int, onSelect: (Int) -> Unit) {
             FilterChip(selected == d, { onSelect(d) }, label = { Text("$d") }, modifier = Modifier.width(44.dp))
         }
     }
-    if (selected > 28) Text("In shorter months this becomes the last day of the month.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+    if (selected > 28) Text("Short months use their last day.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
 }
 

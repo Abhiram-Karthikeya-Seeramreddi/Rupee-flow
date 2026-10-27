@@ -332,3 +332,16 @@ fun LegendRow(color: Color, label: String, value: String, sub: String? = null, o
 }
 
 val PlainStyle = TextStyle()
+
+/** Keyboard presets so every field opens the right keyboard. */
+val NumberKeys = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done)
+val NameKeys = KeyboardOptions(
+    keyboardType = KeyboardType.Text,
+    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words,
+    imeAction = androidx.compose.ui.text.input.ImeAction.Next,
+)
+val PlainTextKeys = KeyboardOptions(
+    keyboardType = KeyboardType.Text,
+    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+    imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+)

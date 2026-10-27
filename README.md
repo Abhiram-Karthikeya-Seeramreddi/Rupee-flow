@@ -7,6 +7,15 @@ Track every rupee you earn, spend, save or move — offline, private, and in abo
 
 ---
 
+## What's new in 1.1.0
+- 🎤 **Voice entry fixed** — no more crash. The app now asks for microphone permission and listens inside the app (live text while you speak).
+- 📎 **Receipts fixed** — attach from **Camera** or **Gallery** (system photo picker, no storage permission). Tap a receipt to view it.
+- ⌨️ **Add screen redesigned** — full screen, the amount uses the phone's number keyboard, text fields use the normal keyboard (the old on-screen keypad is gone).
+- ✅ **Clear confirmations** — e.g. “Expense added · ₹250 · Groceries”, “Saved ₹5,000 → Savings”.
+- 🐷 **Goals**: “To” now lists only savings accounts, with a one-tap *Create Savings account*.
+- 🏅 **Badminton → Sports**, with Badminton, Cricket, Football, Swimming and Sports gear as subcategories. Existing data moves automatically.
+- 🧹 **Cleaner UI** — unused budgets collapsed, shorter text everywhere, challenge amount starts empty.
+
 ## Table of contents
 1. [What the app does](#what-the-app-does)
 2. [Technologies used](#technologies-used)
@@ -27,9 +36,9 @@ Track every rupee you earn, spend, save or move — offline, private, and in abo
 | Screen | What you get |
 |---|---|
 | **Home** | "Safe to spend today" (with the maths shown), salary-day prompt, logging streak, today / week / cycle spending, accounts, budgets, upcoming bills, insights |
-| **Quick add (+)** | Number pad, one-tap repeats of things you buy often, category grid, Today/Yesterday, notes, receipt photo. Type or **say** “250 biryani upi” and it fills the form for you |
+| **Add (+)** | Full-screen form: amount opens the phone's number keyboard, one-tap repeats of things you buy often, category grid (with subcategories like Sports › Badminton), Today/Yesterday, notes, receipt from **camera or gallery**. Type or **say** “250 biryani upi” (asks for microphone permission the first time) and it fills the form for you |
 | **Activity** | Search, filters, sort, swipe to delete (with undo) |
-| **Plan** | Budgets (daily → yearly, salary cycle, custom), alerts at 50/75/90/100 %, savings goals, savings plan, small challenges |
+| **Plan** | Budgets (daily → yearly, salary cycle, custom), alerts at 50/75/90/100 %; budgets with no spending yet are folded into one tidy row. Savings goals (money moves into a Savings account — one tap creates it), savings plan, small challenges |
 | **Bills** | Subscriptions & recurring payments (Netflix, gym, EMI…), reminders 7/3/1 days before, “mark paid” without double counting |
 | **Insights** | Charts by category, daily spend, 6-cycle trend, essential vs non-essential, top merchants, unusual spends, a transparent habits score |
 | **Settings** | Salary day, accounts & reconcile, categories, auto-categorise rules, reminders, backup/restore (optional password), CSV export, bank-CSV & SMS import, app lock, dark mode |
@@ -81,7 +90,7 @@ cd Rupee-flow
 ### Step 3 — Build the app
 **Option A — one double-click:** open the `Rupee-flow` folder in File Explorer and double-click **`BUILD-APK.bat`**.
 - The first build downloads Gradle and libraries, so it can take 5–15 minutes.
-- When it finishes you'll get **`RupeeFlow-debug.apk`** in the folder (or `RupeeFlow-1.0.0.apk` if you have the signing key, see below).
+- When it finishes you'll get **`RupeeFlow-debug.apk`** in the folder (or `RupeeFlow-1.1.0.apk` if you have the signing key, see below).
 - Everything the build prints is saved in `build-log.txt`. If it fails, look for lines starting with `e:` or `FAILURE`.
 - If it says *SDK location not found*, run **`SETUP-SDK.bat`** once, then `BUILD-APK.bat` again.
 
@@ -159,12 +168,15 @@ Rupee-flow/
 │     ├─ QuickParse.kt           "250 biryani upi yesterday" → a filled form
 │     ├─ Importers.kt            Bank CSV + bank SMS parsing
 │     ├─ Insights.kt / Goals.kt  Analytics, health score, goal progress
-│     └─ Categories.kt           25 default categories + keywords
+│     └─ Categories.kt           Default categories, subcategories (Sports › Badminton…) + keywords
 ├─ app/                          The Android app
 │  ├─ src/main/java/com/rupeeflow/app/
 │  │  ├─ data/                   Room database, repository, settings, backup, CSV export
 │  │  │  └─ Snapshot.kt          Builds the numbers every screen shows (one source of truth)
 │  │  ├─ ui/screens/             One file per screen (Home, Activity, Plan, Bills, Insights…)
+│  │  │  ├─ AddTransactionScreen.kt  The Add/Edit entry screen
+│  │  │  ├─ VoiceInput.kt          Microphone permission + in-app speech recognition
+│  │  │  └─ ReceiptInput.kt        Camera / gallery receipts
 │  │  ├─ ui/components/          Reusable cards, charts, pickers
 │  │  ├─ ui/theme/               Colours & fonts (light + dark)
 │  │  ├─ notify/                 Reminders and alerts (WorkManager)
@@ -221,7 +233,7 @@ Please keep these true when changing code — the tests check them:
 
 - **No automatic bank sync.** Android doesn't allow apps to read bank/UPI apps. You can import a bank **CSV** statement or tap **Scan SMS** to read bank alerts — everything is reviewed before saving. SMS formats differ by bank, so some messages may be missed.
 - **READ_SMS** permission is fine for sideloading but would need a special exemption to publish on the Play Store.
-- **Voice input** uses the phone's own speech recogniser; offline accuracy depends on the phone. Typing the same sentence always works offline.
+- **Voice input** uses the phone's own speech recogniser (Google or Samsung). Some phones need internet for it; typing the same sentence always works offline. Microphone permission is only asked when you tap the mic.
 - **Reminders** may arrive a little late because Android saves battery; they never repeat.
 - **Database is not encrypted at rest** (relies on Android's app sandbox + phone encryption). Backups can be password-encrypted.
 - **Single device only** — no cloud sync between phones. Use Backup/Restore to move data.
@@ -239,6 +251,7 @@ Please keep these true when changing code — the tests check them:
 | `Unsupported class file major version` / Java errors | Install Java 17 or newer, or build from Android Studio (it has its own Java) |
 | Build is very slow the first time | Normal — it downloads ~500 MB once. Later builds take ~1 minute |
 | `App not installed` on phone | Uninstall the old version first (debug and release use different keys) |
+| Mic says "blocked" | Phone Settings → Apps → RupeeFlow → Permissions → Microphone → Allow |
 | `Permission denied` running `./gradlew` on Mac/Linux | `chmod +x gradlew` |
 | Gradle sync fails in Android Studio | *File → Invalidate Caches → Restart*, then *File → Sync Project with Gradle Files* |
 
@@ -246,4 +259,4 @@ Please keep these true when changing code — the tests check them:
 
 ## Signing & releases (project owner only)
 
-Release APKs are signed with a private key kept **outside** this repository (`keystore/rupeeflow-release.jks` + `keystore.properties`, both git-ignored). If that file is present, `BUILD-APK.bat` makes a signed `RupeeFlow-1.0.0.apk`; otherwise it makes `RupeeFlow-debug.apk`. To publish an update that installs over the existing app, it must be signed with the same key and keep the application ID `com.rupeeflow.app`. Never upload the key to GitHub.
+Release APKs are signed with a private key kept **outside** this repository (`keystore/rupeeflow-release.jks` + `keystore.properties`, both git-ignored). If that file is present, `BUILD-APK.bat` makes a signed `RupeeFlow-1.1.0.apk`; otherwise it makes `RupeeFlow-debug.apk`. To publish an update that installs over the existing app, it must be signed with the same key and keep the application ID `com.rupeeflow.app`. Never upload the key to GitHub.

@@ -83,8 +83,8 @@ private data class BillPreset(val emoji: String, val name: String, val amount: L
 
 private val presets = listOf(
     BillPreset("🏋️", "Gym membership", 150000, "gym"),
-    BillPreset("🏸", "Badminton coaching", 200000, "badminton"),
-    BillPreset("🏸", "Court booking", 60000, "badminton", Frequency.WEEKLY),
+    BillPreset("🏸", "Badminton coaching", 200000, "sports__badminton"),
+    BillPreset("🏸", "Court booking", 60000, "sports__badminton", Frequency.WEEKLY),
     BillPreset("🎬", "Netflix", 64900, "subscriptions"),
     BillPreset("📦", "Amazon Prime", 149900, "subscriptions", Frequency.YEARLY),
     BillPreset("▶️", "YouTube Premium", 14900, "subscriptions"),
@@ -130,7 +130,7 @@ fun BillsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues
                         Text(fmt.f(snap.billsDueThisCycle), style = MaterialTheme.typography.titleLarge, color = Rf.colors.warning)
                     }
                 }
-                Text("A bill only counts as spending once you mark it paid (or link the payment you already recorded).",
+                Text("Counted as spent only when marked paid.",
                     style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle, modifier = Modifier.padding(top = 6.dp))
             }
         }
@@ -165,7 +165,7 @@ fun BillsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingValues
         }
         if (shown.isEmpty()) item {
             EmptyState("🔁", if (filter == SubStatus.ACTIVE) "No bills yet" else "Nothing ${filter.label.lowercase()}",
-                "Add subscriptions and recurring payments to get reminders 7, 3 and 1 day before.")
+                "Add a bill to get reminders before it's due.")
         }
         item {
             Text("Quick add", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
@@ -247,7 +247,7 @@ private fun BillCard(vm: MainViewModel, b: BillView, snap: Snapshot, onPay: () -
             else -> {}
         }
     }
-    if (confirmDelete) ConfirmDialog("Delete ${s.name}?", "Past payments stay in your history as normal expenses. Consider 'Cancel subscription' to keep the record.",
+    if (confirmDelete) ConfirmDialog("Delete ${s.name}?", "Past payments stay in your history.",
         "Delete", onConfirm = { vm.write("Deleted") { vm.repo.deleteSubscription(s.id) }; confirmDelete = false }, onDismiss = { confirmDelete = false }, destructive = true)
 }
 
@@ -273,14 +273,14 @@ private fun BillEditor(vm: MainViewModel, snap: Snapshot, s: SubscriptionEntity,
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(emoji, { if (it.length <= 4) emoji = it }, label = { Text("Icon") }, singleLine = true, modifier = Modifier.width(80.dp))
-                    OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NameKeys, modifier = Modifier.weight(1f))
                 }
                 AmountField(amount, { amount = it }, "Amount")
                 Text("How often", style = MaterialTheme.typography.labelMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Frequency.entries.forEach { f -> FilterChip(freq == f, { freq = f }, label = { Text(f.label) }) }
                 }
-                if (freq == Frequency.CUSTOM_DAYS) OutlinedTextField(interval, { interval = it.filter(Char::isDigit).take(3) }, label = { Text("Every N days") }, singleLine = true)
+                if (freq == Frequency.CUSTOM_DAYS) OutlinedTextField(interval, { interval = it.filter(Char::isDigit).take(3) }, label = { Text("Every N days") }, singleLine = true, keyboardOptions = com.rupeeflow.app.ui.components.NumberKeys)
                 DatePickerButton("Next due date", due, { due = it }, Modifier.fillMaxWidth())
                 Selector("Category", snap.categories.filter { it.categoryKind() == CategoryKind.EXPENSE && it.parentId == null }.map { it.id }, catId,
                     display = { id -> snap.category(id)?.let { "${it.emoji} ${it.name}" } ?: "" }, onSelect = { catId = it })
@@ -289,7 +289,7 @@ private fun BillEditor(vm: MainViewModel, snap: Snapshot, s: SubscriptionEntity,
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Auto-pay / auto-debit")
-                        Text("You'll still confirm it went through, so it's counted exactly once.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
+                        Text("You'll confirm when it goes through.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
                     }
                     Switch(autopay, { autopay = it })
                 }
@@ -299,7 +299,7 @@ private fun BillEditor(vm: MainViewModel, snap: Snapshot, s: SubscriptionEntity,
                     FilterChip(r3, { r3 = !r3 }, label = { Text("3 days") })
                     FilterChip(r1, { r1 = !r1 }, label = { Text("1 day") })
                 }
-                OutlinedTextField(notes, { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(notes, { notes = it }, label = { Text("Notes") }, keyboardOptions = com.rupeeflow.app.ui.components.PlainTextKeys, modifier = Modifier.fillMaxWidth())
             }
         },
         confirmButton = {

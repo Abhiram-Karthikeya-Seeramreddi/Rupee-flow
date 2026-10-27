@@ -98,22 +98,54 @@ class FinanceRepository(
     companion object {
         fun newId(): String = UUID.randomUUID().toString()
         fun nowMinute(): Int = LocalTime.now().let { it.hour * 60 + it.minute }
+
+        private val SUB_EMOJI = mapOf(
+            "Badminton" to "🏸", "Cricket" to "🏏", "Football" to "⚽", "Swimming" to "🏊", "Sports gear" to "👟",
+        )
     }
 
     /* ---------------- Setup ---------------- */
 
     /** Inserts built-in categories that don't exist yet. Never overwrites user edits. */
     suspend fun ensureDefaultCategories() {
-        val favorites = setOf("food", "restaurants", "transport", "fuel", "badminton", "shopping", "entertainment", "salary")
+        val favorites = setOf("food", "restaurants", "transport", "fuel", "sports", "shopping", "entertainment", "salary")
         val list = ArrayList<CategoryEntity>()
         DefaultCategories.all.forEachIndexed { i, d ->
             list += CategoryEntity(d.key, d.name, d.emoji, d.color, d.kind.name, null, d.essential, d.fixed, d.key in favorites, false, i * 10)
             d.subcategories.forEachIndexed { j, sub ->
-                val id = d.key + "__" + sub.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
-                list += CategoryEntity(id, sub, d.emoji, d.color, d.kind.name, d.key, d.essential, d.fixed, false, false, i * 10 + j + 1)
+                val id = DefaultCategories.subId(d.key, sub)
+                list += CategoryEntity(id, sub, SUB_EMOJI[sub] ?: d.emoji, d.color, d.kind.name, d.key, d.essential, d.fixed, false, false, i * 10 + j + 1)
             }
         }
         categories.insertAllIgnore(list)
+        migrateLegacySports()
+    }
+
+    /**
+     * v1.0 had a single "Badminton & sports" category (id "badminton") with badminton-only
+     * subcategories. v1.1 has "Sports" with Badminton as a subcategory. This moves every
+     * reference (transactions, bills, budgets, rules, templates, challenges) to the new ids in
+     * one transaction, then removes the old categories. Safe to run repeatedly.
+     */
+    private suspend fun migrateLegacySports() {
+        val legacy = DefaultCategories.LEGACY_SPORTS_ROOT
+        val old = categories.get(legacy) ?: return
+        val target = DefaultCategories.legacySportsTarget
+        if (categories.get("sports") == null || categories.get(target) == null) return
+        db.withTransaction {
+            val w = db.openHelper.writableDatabase
+            val isOld = "(categoryId = '$legacy' OR substr(categoryId, 1, ${legacy.length + 2}) = '${legacy}__')"
+            w.execSQL("UPDATE transactions SET categoryId = '$target' WHERE $isOld")
+            w.execSQL("UPDATE subscriptions SET categoryId = '$target' WHERE $isOld")
+            w.execSQL("UPDATE budgets SET categoryId = 'sports' WHERE categoryId = '$legacy'")
+            w.execSQL("UPDATE budgets SET categoryId = '$target' WHERE $isOld")
+            w.execSQL("UPDATE category_rules SET categoryId = '$target' WHERE $isOld")
+            w.execSQL("UPDATE templates SET categoryId = '$target' WHERE $isOld")
+            w.execSQL("UPDATE challenges SET categoryId = 'sports' WHERE $isOld")
+            if (old.favorite) w.execSQL("UPDATE categories SET favorite = 1 WHERE id = 'sports'")
+            w.execSQL("UPDATE categories SET parentId = NULL WHERE parentId = '$legacy' AND substr(id, 1, ${legacy.length + 2}) != '${legacy}__'")
+            w.execSQL("DELETE FROM categories WHERE id = '$legacy' OR substr(id, 1, ${legacy.length + 2}) = '${legacy}__'")
+        }
     }
 
     /* ---------------- Transactions ---------------- */
@@ -328,6 +360,24 @@ class FinanceRepository(
     suspend fun saveAccount(a: AccountEntity) {
         if (a.name.isBlank()) throw ValidationException("Name the account.")
         accounts.upsert(a.copy(name = a.name.trim())); changed()
+    }
+
+    /** One-tap "Savings" account for goals and savings transfers. Reuses an existing one if present. */
+    suspend fun ensureSavingsAccount(): String {
+        accounts.getAll().firstOrNull { !it.archived && it.accountType() == AccountType.SAVINGS }?.let { return it.id }
+        val id = newId()
+        accounts.upsert(AccountEntity(id, "Savings", AccountType.SAVINGS.name, 0, false, "🐷", sortOrder = accounts.getAll().size))
+        changed()
+        return id
+    }
+
+    /** Deletes receipt images no longer referenced by any transaction (e.g. replaced or discarded drafts). */
+    suspend fun cleanupOrphanReceipts(olderThanMs: Long = 24L * 3600 * 1000) {
+        val dir = File(filesDir, "receipts")
+        val files = dir.listFiles() ?: return
+        val used = txDao.getAll().mapNotNull { it.receiptPath }.toSet()
+        val cutoff = System.currentTimeMillis() - olderThanMs
+        files.filter { it.absolutePath !in used && it.lastModified() < cutoff }.forEach { it.delete() }
     }
 
     suspend fun deleteOrArchiveAccount(id: String): String {

@@ -1,6 +1,7 @@
 package com.rupeeflow.core
 
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 data class CategoryMeta(
     val id: String,
@@ -181,12 +182,15 @@ object Analytics {
 
         safeFree?.let {
             out += if (it >= 0) Insight("🧘", "You have ${Money.format(it)} free to spend until your next salary after bills and planned savings.", Insight.Tone.GOOD)
-            else Insight("⚠️", "Upcoming bills and savings plans exceed your spendable balance by ${Money.format(-it)}.", Insight.Tone.BAD)
+            else Insight("⚠️", "Bills and savings plans need ${Money.format(-it)} more than you have.", Insight.Tone.BAD)
         }
 
         // No-spend days
-        if (isRunning && elapsed >= 5 && curTotal > 0) {
-            val zero = dailySeries(txs, DateRange(current.start, today)).count { it.second == 0L }
+        // Count only from the first day anything was logged; earlier days aren't "no-spend", they're just empty.
+        val firstLogged = txs.minOfOrNull { it.epochDay }?.let { LocalDate.ofEpochDay(it) }
+        val from = if (firstLogged != null && firstLogged.isAfter(current.start)) firstLogged else current.start
+        if (isRunning && elapsed >= 5 && curTotal > 0 && !from.isAfter(today) && ChronoUnit.DAYS.between(from, today) >= 4) {
+            val zero = dailySeries(txs, DateRange(from, today)).count { it.second == 0L }
             if (zero > 0) out += Insight("🌱", "$zero no-spend day${if (zero == 1) "" else "s"} so far in $periodName.", Insight.Tone.GOOD)
         }
         return out

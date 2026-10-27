@@ -88,12 +88,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun deleteTransaction(id: String) {
+    fun deleteTransaction(id: String, message: String = "Entry deleted") {
         viewModelScope.launch {
             val d = repo.deleteTransaction(id) ?: return@launch
-            toast("Deleted", "Undo") { viewModelScope.launch { repo.undoDelete(d) } }
+            toast(message, "Undo") { viewModelScope.launch { repo.undoDelete(d); toast("Restored") } }
         }
     }
+
+    /** The entry the full-screen Add screen is showing; kept here so it survives rotation. */
+    var addRequest: com.rupeeflow.app.ui.screens.AddRequest? = null
 
     fun saveTransaction(t: TransactionEntity, onDone: () -> Unit = {}) {
         write {

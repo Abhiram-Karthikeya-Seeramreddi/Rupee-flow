@@ -58,6 +58,7 @@ class RupeeFlowApp : Application() {
         }
         container.scope.launch {
             runCatching { container.repo.ensureDefaultCategories() }
+            runCatching { container.repo.cleanupOrphanReceipts() }
             runCatching { Scheduling.scheduleAll(this@RupeeFlowApp, container.settings.current()) }
         }
     }

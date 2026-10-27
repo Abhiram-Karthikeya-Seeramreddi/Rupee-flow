@@ -94,9 +94,9 @@ fun InsightsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("Saved & invested", fmt.f(d.saved), Modifier.weight(1f), valueColor = MaterialTheme.colorScheme.primary)
-                StatTile("Savings rate", d.savingsRate?.let { "$it%" } ?: "—", Modifier.weight(1f), hint = "(income − spending) ÷ income")
-                StatTile("Avg / day", fmt.f(d.avgDaily), Modifier.weight(1f))
+                StatTile("Saved", fmt.f(d.saved), Modifier.weight(1f), valueColor = MaterialTheme.colorScheme.primary)
+                StatTile("Savings rate", d.savingsRate?.let { "$it%" } ?: "—", Modifier.weight(1f))
+                StatTile("Avg / day", fmt.f((d.avgDaily + 50) / 100 * 100), Modifier.weight(1f))
             }
         }
 
@@ -133,7 +133,7 @@ fun InsightsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
                 BarChart(pts.map { it.second }, pts.map { "${it.first.dayOfMonth}" }, highlightLast = true, limitLine = perDay,
                     showEveryNthLabel = (pts.size / 7).coerceAtLeast(1)) { fmt.f(it) }
                 if (perDay != null) Text("Dashed line: today's safe-to-spend per day (${fmt.f(perDay)})", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle)
-                val zero = pts.count { it.second == 0L && !it.first.isAfter(snap.today) }
+                val zero = pts.dropWhile { it.second == 0L }.count { it.second == 0L && !it.first.isAfter(snap.today) }
                 if (zero > 0) Text("$zero day${if (zero == 1) "" else "s"} with no spending 🌱", style = MaterialTheme.typography.labelMedium, color = Rf.colors.positive)
             }
         }
@@ -162,7 +162,7 @@ fun InsightsScreen(vm: MainViewModel, snap: Snapshot, contentPadding: PaddingVal
                 Spacer(Modifier.height(6.dp))
                 SplitBar(d.fixed.a, d.fixed.b, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
                 Row { LegendDot(MaterialTheme.colorScheme.primary, "Fixed ${fmt.f(d.fixed.a)}"); Spacer(Modifier.width(12.dp)); LegendDot(MaterialTheme.colorScheme.tertiary, "Variable ${fmt.f(d.fixed.b)}") }
-                Text("Mark categories as essential/fixed in Settings → Categories.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle, modifier = Modifier.padding(top = 6.dp))
+                Text("Change in Settings → Categories.", style = MaterialTheme.typography.labelSmall, color = Rf.colors.subtle, modifier = Modifier.padding(top = 6.dp))
             }
         }
 
