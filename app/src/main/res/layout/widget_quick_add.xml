@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Safe to spend today" android:textColor="#CCFFFFFF" android:textSize="12sp" />
+        <TextView android:id="@+id/widget_amount" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="—" android:textColor="#FFFFFFFF" android:textSize="24sp" android:textStyle="bold" />
+        <TextView android:id="@+id/widget_sub" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:maxLines="1" android:ellipsize="end" android:textColor="#CCFFFFFF" android:textSize="11sp" />
+    </LinearLayout>
+
+    <TextView android:id="@+id/widget_voice" android:layout_width="40dp" android:layout_height="40dp"
+        android:layout_marginEnd="8dp" android:background="@drawable/widget_btn" android:gravity="center"
+        android:text="🎤" android:textSize="18sp" android:contentDescription="Add by voice" />
+
+    <TextView android:id="@+id/widget_add" android:layout_width="wrap_content" android:layout_height="40dp"
+        android:background="@drawable/widget_btn" android:gravity="center" android:paddingStart="14dp" android:paddingEnd="14dp"
+        android:text="+ Add" android:textColor="#FFFFFFFF" android:textSize="15sp" android:textStyle="bold"
+        android:contentDescription="Add expense" />
+</LinearLayout>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="add" android:enabled="true" android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_add" android:shortcutLongLabel="@string/shortcut_add_long">
+        <intent android:action="com.rupeeflow.app.QUICK_ADD" android:targetPackage="com.rupeeflow.app"
+            android:targetClass="com.rupeeflow.app.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="voice" android:enabled="true" android:icon="@drawable/ic_shortcut_mic"
+        android:shortcutShortLabel="@string/shortcut_voice" android:shortcutLongLabel="@string/shortcut_voice_long">
+        <intent android:action="com.rupeeflow.app.VOICE_ADD" android:targetPackage="com.rupeeflow.app"
+            android:targetClass="com.rupeeflow.app.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="bills" android:enabled="true" android:icon="@drawable/ic_shortcut_bills"
+        android:shortcutShortLabel="@string/shortcut_bills" android:shortcutLongLabel="@string/shortcut_bills">
+        <intent android:action="com.rupeeflow.app.OPEN_BILLS" android:targetPackage="com.rupeeflow.app"
+            android:targetClass="com.rupeeflow.app.MainActivity" />
+    </shortcut>
+</shortcuts>

@@ -1,0 +1,83 @@
+package com.rupeeflow.core
+
+enum class CategoryKind { EXPENSE, INCOME }
+
+data class DefaultCategory(
+    val key: String,
+    val name: String,
+    val emoji: String,
+    val color: Long,
+    val kind: CategoryKind = CategoryKind.EXPENSE,
+    val essential: Boolean = false,
+    val fixed: Boolean = false,
+    val subcategories: List<String> = emptyList(),
+    val keywords: List<String> = emptyList(),
+)
+
+/** Built-in categories. Keys are stable identifiers; names can be renamed by the user. */
+object DefaultCategories {
+    val all: List<DefaultCategory> = listOf(
+        DefaultCategory("food", "Groceries", "🛒", 0xFF2E9E6B, essential = true,
+            subcategories = listOf("Vegetables & fruits", "Milk & dairy", "Staples", "Snacks"),
+            keywords = listOf("grocery", "groceries", "vegetables", "veggies", "vegetable", "milk", "curd", "bigbasket", "blinkit", "zepto", "instamart", "dmart", "fruits", "fruit", "eggs", "rice", "atta", "kirana", "ratnadeep", "more supermarket")),
+        DefaultCategory("restaurants", "Restaurants & delivery", "🍔", 0xFFF2784B,
+            subcategories = listOf("Food delivery", "Dine-out", "Cafe & snacks"),
+            keywords = listOf("biryani", "pizza", "burger", "swiggy", "zomato", "lunch", "dinner", "breakfast", "restaurant", "cafe", "coffee", "tea", "chai", "dosa", "idli", "shawarma", "momos", "starbucks", "dominos", "kfc", "mcdonalds", "food", "meal", "juice", "ice cream", "dessert", "bakery", "eatfit")),
+        DefaultCategory("transport", "Transport", "🚕", 0xFF4F7CF7, essential = true,
+            subcategories = listOf("Cab", "Auto", "Metro", "Bus & train", "Parking & tolls"),
+            keywords = listOf("uber", "ola", "rapido", "auto", "cab", "metro", "bus", "train", "irctc", "parking", "toll", "fastag", "redbus")),
+        DefaultCategory("fuel", "Fuel", "⛽", 0xFFE0A100, essential = true,
+            keywords = listOf("petrol", "diesel", "fuel", "cng", "iocl", "bpcl", "hpcl", "indian oil", "shell")),
+        DefaultCategory("rent", "Rent & housing", "🏠", 0xFF8E6CEF, essential = true, fixed = true,
+            keywords = listOf("rent", "house rent", "pg", "hostel", "deposit")),
+        DefaultCategory("utilities", "Electricity & utilities", "💡", 0xFFF5B83D, essential = true, fixed = true,
+            keywords = listOf("electricity", "power bill", "current bill", "water bill", "gas", "cylinder", "lpg", "tsspdcl", "bescom")),
+        DefaultCategory("mobile", "Mobile recharge", "📱", 0xFF26A7C9, essential = true, fixed = true,
+            keywords = listOf("recharge", "jio", "airtel", "vodafone", "vi recharge", "prepaid", "postpaid", "bsnl")),
+        DefaultCategory("internet", "Internet & broadband", "🌐", 0xFF3B8FD9, essential = true, fixed = true,
+            keywords = listOf("wifi", "wi-fi", "broadband", "act fibernet", "internet", "fiber", "hathway", "airtel xstream")),
+        DefaultCategory("badminton", "Badminton & sports", "🏸", 0xFF17B890,
+            subcategories = listOf("Court booking", "Coaching", "Shuttles", "Gear"),
+            keywords = listOf("badminton", "shuttle", "shuttles", "court", "racket", "racquet", "coaching", "playo", "turf", "cricket", "football")),
+        DefaultCategory("gym", "Gym & fitness", "🏋️", 0xFFE5534B,
+            keywords = listOf("gym", "fitness", "protein", "yoga", "cult", "cultfit", "workout", "supplements")),
+        DefaultCategory("health", "Health & medical", "💊", 0xFFD9455F, essential = true,
+            subcategories = listOf("Medicines", "Doctor", "Tests"),
+            keywords = listOf("medicine", "medicines", "pharmacy", "doctor", "hospital", "apollo", "medplus", "clinic", "lab test", "tablets", "dentist", "netmeds", "pharmeasy", "1mg")),
+        DefaultCategory("shopping", "Clothing & shopping", "🛍️", 0xFFD65DB1,
+            keywords = listOf("amazon", "flipkart", "myntra", "clothes", "shirt", "tshirt", "jeans", "shoes", "ajio", "shopping", "meesho", "nykaa", "decathlon", "watch")),
+        DefaultCategory("entertainment", "Entertainment & gaming", "🎮", 0xFF7A5AF8,
+            keywords = listOf("game", "games", "gaming", "steam", "playstation", "psn", "xbox", "concert", "event", "valorant", "bgmi")),
+        DefaultCategory("outings", "Movies & outings", "🎬", 0xFFFF6F91,
+            keywords = listOf("movie", "movies", "pvr", "inox", "bookmyshow", "outing", "party", "bowling", "drinks", "pub")),
+        DefaultCategory("travel", "Travel", "✈️", 0xFF00A6A6,
+            keywords = listOf("flight", "hotel", "trip", "makemytrip", "goibibo", "travel", "oyo", "airbnb", "vacation", "holiday")),
+        DefaultCategory("education", "Education & courses", "📚", 0xFF5C6BC0, essential = true,
+            keywords = listOf("course", "udemy", "coursera", "book", "books", "exam", "tuition", "college fee", "certification")),
+        DefaultCategory("software", "Software & tech", "💻", 0xFF607D8B,
+            keywords = listOf("software", "domain", "hosting", "icloud", "google one", "chatgpt", "github", "adobe", "microsoft 365", "laptop", "headphones", "charger")),
+        DefaultCategory("insurance", "Insurance", "🛡️", 0xFF455A64, essential = true, fixed = true,
+            keywords = listOf("insurance", "premium", "lic", "policy", "term plan", "health insurance")),
+        DefaultCategory("emi", "Loans & EMI", "🏦", 0xFF795548, essential = true, fixed = true,
+            keywords = listOf("emi", "loan", "bajaj finserv")),
+        DefaultCategory("family", "Family & gifts", "🎁", 0xFFEC407A,
+            keywords = listOf("gift", "gifts", "family", "parents", "mom", "dad", "donation", "temple", "wedding")),
+        DefaultCategory("personal", "Personal care", "💇", 0xFFAB47BC,
+            keywords = listOf("salon", "haircut", "hair cut", "spa", "grooming", "cosmetics", "skincare", "barber")),
+        DefaultCategory("home", "Home maintenance", "🔧", 0xFF8D6E63, essential = true,
+            keywords = listOf("repair", "plumber", "electrician", "furniture", "cleaning", "maid", "laundry", "urban company", "ironing")),
+        DefaultCategory("subscriptions", "Subscriptions", "🔁", 0xFF9575CD, fixed = true,
+            keywords = listOf("netflix", "prime", "amazon prime", "hotstar", "spotify", "youtube premium", "subscription", "zee5", "sonyliv", "jiocinema")),
+        DefaultCategory("taxes", "Taxes & fees", "🧾", 0xFF78909C, essential = true,
+            keywords = listOf("tax", "gst", "fine", "penalty", "charges", "challan", "fee")),
+        DefaultCategory("misc", "Miscellaneous", "📦", 0xFF90A4AE),
+        // Income
+        DefaultCategory("salary", "Salary", "💼", 0xFF2E7D32, CategoryKind.INCOME, keywords = listOf("salary", "payroll")),
+        DefaultCategory("bonus", "Bonus", "🎉", 0xFF43A047, CategoryKind.INCOME, keywords = listOf("bonus", "incentive")),
+        DefaultCategory("interest", "Interest & dividends", "📈", 0xFF00897B, CategoryKind.INCOME, keywords = listOf("interest", "dividend")),
+        DefaultCategory("freelance", "Side income", "🧑‍💻", 0xFF26A69A, CategoryKind.INCOME, keywords = listOf("freelance", "project payment", "side income")),
+        DefaultCategory("other_income", "Other income", "💰", 0xFF66BB6A, CategoryKind.INCOME, keywords = listOf("cashback", "gift received", "received")),
+    )
+
+    val byKey: Map<String, DefaultCategory> = all.associateBy { it.key }
+}

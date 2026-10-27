@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RupeeFlow</string>
+    <string name="widget_label">RupeeFlow quick add</string>
+    <string name="tile_label">Add expense</string>
+    <string name="shortcut_add">Add expense</string>
+    <string name="shortcut_add_long">Add an expense</string>
+    <string name="shortcut_voice">Say an expense</string>
+    <string name="shortcut_voice_long">Add an expense by voice</string>
+    <string name="shortcut_income">Add income</string>
+    <string name="shortcut_bills">Bills</string>
+</resources>
